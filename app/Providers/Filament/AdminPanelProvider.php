@@ -6,6 +6,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -26,20 +27,51 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login()
+            ->login(\App\Filament\Pages\Auth\Login::class)
+            ->brandName('CRM')
+            ->brandLogo(fn () => view('filament.components.brand-logo'))
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::Blue,
+            ])
+            ->navigationGroups([
+                NavigationGroup::make('Comercial'),
+                NavigationGroup::make('Admin'),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
-            ->pages([
-                Pages\Dashboard::class,
-            ])
+            ->pages([])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,
-                Widgets\FilamentInfoWidget::class,
             ])
+            ->renderHook(
+                'panels::topbar.start',
+                fn () => view('filament.components.company-switcher'),
+            )
+            ->renderHook(
+                'panels::sidebar.nav.start',
+                fn () => view('filament.components.sidebar-toggle'),
+            )
+            ->renderHook(
+                'panels::head.end',
+                fn () => view('filament.components.dynamic-styles')->render() . '<style>
+                    .fi-sidebar.sidebar-collapsed { width: 4.5rem !important; min-width: 4.5rem !important; }
+                    .fi-sidebar.sidebar-collapsed .fi-sidebar-nav-groups { overflow: hidden; }
+                    .fi-sidebar.sidebar-collapsed .fi-sidebar-group-label { display: none; }
+                    .fi-sidebar.sidebar-collapsed .fi-sidebar-item-label { display: none; }
+                    .fi-sidebar.sidebar-collapsed .fi-sidebar-item-badge { display: none; }
+                    .fi-sidebar.sidebar-collapsed .fi-sidebar-group-button { justify-content: center; }
+                    .fi-sidebar.sidebar-collapsed .fi-sidebar-item a { justify-content: center; padding-left: 0; padding-right: 0; }
+                    .fi-sidebar.sidebar-collapsed .fi-sidebar-item .fi-sidebar-item-icon { margin: 0; }
+                </style>
+                <script>
+                    document.addEventListener("DOMContentLoaded", function() {
+                        if (localStorage.getItem("sidebar-collapsed") === "true") {
+                            document.querySelector(".fi-sidebar")?.classList.add("sidebar-collapsed");
+                        }
+                    });
+                </script>',
+            )
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
