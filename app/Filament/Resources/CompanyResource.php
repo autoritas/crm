@@ -77,6 +77,16 @@ class CompanyResource extends Resource
                             ]),
                     ])->columns(2),
 
+                Forms\Components\Section::make('Modelo Go / No Go')
+                    ->description('Criterios que la IA usara para evaluar si una oferta es GO o NO GO. Se envia completo al modelo de IA junto con los pliegos.')
+                    ->schema([
+                        Forms\Components\Textarea::make('go_nogo_model')
+                            ->label('Modelo de decision Go / No Go')
+                            ->rows(15)
+                            ->helperText('Pega aqui el modelo completo de criterios. La IA lo usara como referencia para analizar cada pliego.')
+                            ->columnSpanFull(),
+                    ]),
+
                 Forms\Components\Section::make('Kanboard')
                     ->schema([
                         Forms\Components\TextInput::make('kanboard_project_id')

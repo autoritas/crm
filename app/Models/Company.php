@@ -17,6 +17,7 @@ class Company extends Model
         'icon_path',
         'primary_color',
         'kanboard_project_id',
+        'go_nogo_model',
         'is_active',
     ];
 

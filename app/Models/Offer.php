@@ -28,6 +28,8 @@ class Offer extends Model
         'peso_economica', 'peso_tecnica', 'peso_objetiva_real', 'peso_objetiva_fake', 'id_formula',
         // Extra
         'provincia', 'url', 'notas',
+        // Go/NoGo
+        'go_nogo', 'ia_go_nogo', 'ia_go_nogo_analysis', 'ia_go_nogo_date',
     ];
 
     protected function casts(): array
