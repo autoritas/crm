@@ -34,6 +34,8 @@ class InfonaliaData extends Model
         'ia_fecha',
         'revisado_humano',
         'revisado_fecha',
+        'id_screening_reason',
+        'screening_comment',
     ];
 
     protected function casts(): array
@@ -67,5 +69,10 @@ class InfonaliaData extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class, 'id_client');
+    }
+
+    public function screeningReason(): BelongsTo
+    {
+        return $this->belongsTo(ScreeningReason::class, 'id_screening_reason');
     }
 }

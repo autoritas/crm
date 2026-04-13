@@ -2,37 +2,26 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Competitor extends Model
 {
-    use HasFactory;
-
-    protected $fillable = [
-        'id_company',
-        'id_opportunity',
-        'name',
-        'contact_info',
-        'strengths',
-        'weaknesses',
-        'notes',
-    ];
+    protected $fillable = ['id_company', 'name', 'cif', 'notes'];
 
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class, 'id_company');
     }
 
-    public function opportunity(): BelongsTo
+    public function aliases(): HasMany
     {
-        return $this->belongsTo(Opportunity::class, 'id_opportunity');
+        return $this->hasMany(CompetitorAlias::class, 'id_competitor');
     }
 
-    public function valuations(): HasMany
+    public function offerCompetitors(): HasMany
     {
-        return $this->hasMany(Valuation::class, 'id_competitor');
+        return $this->hasMany(OfferCompetitor::class, 'id_competitor');
     }
 }

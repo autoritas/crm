@@ -1,13 +1,24 @@
 @php
-    $statuses = \App\Models\InfonaliaStatus::all();
+    $infonaliaStatuses = \App\Models\InfonaliaStatus::all();
+    $offerStatuses = \App\Models\OfferStatus::all();
 @endphp
 <style>
-    /* Colores tenues de fila por estado de decision */
-    @foreach($statuses as $status)
+    /* Colores tenues de fila: Infonalia */
+    @foreach($infonaliaStatuses as $status)
     tr.infonalia-row-{{ $status->id }} {
         background-color: {{ $status->color }}15 !important;
     }
     tr.infonalia-row-{{ $status->id }}:hover {
+        background-color: {{ $status->color }}25 !important;
+    }
+    @endforeach
+
+    /* Colores tenues de fila: Ofertas */
+    @foreach($offerStatuses as $status)
+    tr.offer-row-{{ $status->id }} {
+        background-color: {{ $status->color }}15 !important;
+    }
+    tr.offer-row-{{ $status->id }}:hover {
         background-color: {{ $status->color }}25 !important;
     }
     @endforeach
@@ -85,22 +96,3 @@
         height: 2rem !important;
     }
 </style>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Persistir columnas toggleadas
-        const STORAGE_KEY = 'filament_columns_' + window.location.pathname;
-        const observer = new MutationObserver(function() {
-            const toggles = document.querySelectorAll('.fi-ta-col-toggle input[type="checkbox"]');
-            if (toggles.length === 0) return;
-            const state = {};
-            toggles.forEach(toggle => {
-                const label = toggle.closest('label')?.textContent?.trim();
-                if (label) state[label] = toggle.checked;
-            });
-            if (Object.keys(state).length > 0) {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-            }
-        });
-        observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['class', 'hidden'] });
-    });
-</script>

@@ -19,12 +19,68 @@
         <a href="{{ route('filament.admin.resources.infonalia-statuses.index') }}"
            class="block rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md hover:border-primary-500 dark:border-gray-700 dark:bg-gray-800">
             <div class="flex items-center gap-4">
-                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-primary-50 dark:bg-primary-500/10">
-                    <x-heroicon-o-tag class="h-6 w-6 text-primary-600 dark:text-primary-400" />
+                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-500/10">
+                    <x-heroicon-o-tag class="h-6 w-6 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
                     <h3 class="text-base font-semibold text-gray-900 dark:text-white">Estados Infonalia</h3>
                     <p class="text-sm text-gray-500 dark:text-gray-400">Gestionar estados por empresa</p>
+                </div>
+            </div>
+        </a>
+
+        {{-- Card: Offer Status --}}
+        <a href="{{ route('filament.admin.resources.offer-statuses.index') }}"
+           class="block rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md hover:border-primary-500 dark:border-gray-700 dark:bg-gray-800">
+            <div class="flex items-center gap-4">
+                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-green-50 dark:bg-green-500/10">
+                    <x-heroicon-o-clipboard-document-check class="h-6 w-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                    <h3 class="text-base font-semibold text-gray-900 dark:text-white">Estados Ofertas</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Gestionar estados de oferta por empresa</p>
+                </div>
+            </div>
+        </a>
+
+        {{-- Card: Offer Types --}}
+        <a href="{{ route('filament.admin.resources.offer-types.index') }}"
+           class="block rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md hover:border-primary-500 dark:border-gray-700 dark:bg-gray-800">
+            <div class="flex items-center gap-4">
+                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-500/10">
+                    <x-heroicon-o-list-bullet class="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div>
+                    <h3 class="text-base font-semibold text-gray-900 dark:text-white">Tipos Licitacion</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Tipos de licitacion por empresa</p>
+                </div>
+            </div>
+        </a>
+
+        {{-- Card: Motivos Cribado --}}
+        <a href="{{ route('filament.admin.resources.screening-reasons.index') }}"
+           class="block rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md hover:border-primary-500 dark:border-gray-700 dark:bg-gray-800">
+            <div class="flex items-center gap-4">
+                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-50 dark:bg-orange-500/10">
+                    <x-heroicon-o-funnel class="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                </div>
+                <div>
+                    <h3 class="text-base font-semibold text-gray-900 dark:text-white">Motivos Cribado</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Motivos positivos y negativos para IA</p>
+                </div>
+            </div>
+        </a>
+
+        {{-- Card: Competidores --}}
+        <a href="{{ route('filament.admin.resources.competitor-catalogs.index') }}"
+           class="block rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md hover:border-primary-500 dark:border-gray-700 dark:bg-gray-800">
+            <div class="flex items-center gap-4">
+                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-red-50 dark:bg-red-500/10">
+                    <x-heroicon-o-user-group class="h-6 w-6 text-red-600 dark:text-red-400" />
+                </div>
+                <div>
+                    <h3 class="text-base font-semibold text-gray-900 dark:text-white">Competidores</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Catalogo normalizado de competidores</p>
                 </div>
             </div>
         </a>

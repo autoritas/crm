@@ -35,6 +35,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->navigationGroups([
                 NavigationGroup::make('Comercial'),
+                NavigationGroup::make('Ofertas'),
                 NavigationGroup::make('Admin'),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
