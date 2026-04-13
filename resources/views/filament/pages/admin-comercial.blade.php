@@ -85,5 +85,19 @@
             </div>
         </a>
 
+        {{-- Card: Credenciales API --}}
+        <a href="{{ route('filament.admin.resources.api-credentials.index') }}"
+           class="block rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md hover:border-primary-500 dark:border-gray-700 dark:bg-gray-800">
+            <div class="flex items-center gap-4">
+                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-500/10">
+                    <x-heroicon-o-key class="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div>
+                    <h3 class="text-base font-semibold text-gray-900 dark:text-white">Credenciales API</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">n8n, OpenAI, Kanboard y otros servicios</p>
+                </div>
+            </div>
+        </a>
+
     </div>
 </x-filament-panels::page>

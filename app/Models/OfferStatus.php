@@ -12,12 +12,14 @@ class OfferStatus extends Model
         'status',
         'color',
         'is_default_filter',
+        'is_default_discard',
     ];
 
     protected function casts(): array
     {
         return [
             'is_default_filter' => 'boolean',
+            'is_default_discard' => 'boolean',
         ];
     }
 

@@ -76,6 +76,84 @@ class CompanyResource extends Resource
                                 'text/xml', 'text/plain', 'text/html', 'application/xml',
                             ]),
                     ])->columns(2),
+
+                Forms\Components\Section::make('Kanboard')
+                    ->schema([
+                        Forms\Components\TextInput::make('kanboard_project_id')
+                            ->label('ID Proyecto Kanboard')
+                            ->numeric()
+                            ->helperText('El ID del proyecto en Kanboard para esta empresa.'),
+                        Forms\Components\Repeater::make('kanboardColumns')
+                            ->relationship()
+                            ->label('Columnas del tablero')
+                            ->schema([
+                                Forms\Components\TextInput::make('kanboard_column_id')
+                                    ->label('ID Columna')
+                                    ->numeric()
+                                    ->required(),
+                                Forms\Components\TextInput::make('name')
+                                    ->label('Nombre')
+                                    ->required(),
+                                Forms\Components\TextInput::make('position')
+                                    ->label('Posicion')
+                                    ->numeric()
+                                    ->default(0),
+                                Forms\Components\TextInput::make('description')
+                                    ->label('Descripcion'),
+                            ])
+                            ->columns(4)
+                            ->defaultItems(0)
+                            ->addActionLabel('Añadir columna')
+                            ->collapsible()
+                            ->itemLabel(fn (array $state): ?string => ($state['name'] ?? '') . ' (ID: ' . ($state['kanboard_column_id'] ?? '') . ')'),
+                    ]),
+
+                Forms\Components\Section::make('APIs de IA')
+                    ->description('Cada empresa puede tener sus propias claves de API para servicios de IA.')
+                    ->schema([
+                        Forms\Components\Repeater::make('apiCredentials')
+                            ->relationship(
+                                'apiCredentials',
+                                modifyQueryUsing: fn ($query, $record) => $record
+                                    ? $query->where('id_company', $record->id)
+                                    : $query
+                            )
+                            ->label('')
+                            ->schema([
+                                Forms\Components\Hidden::make('id_company')
+                                    ->default(fn ($livewire) => $livewire->record?->id),
+                                Forms\Components\Select::make('service')
+                                    ->label('Servicio')
+                                    ->options([
+                                        'openai' => 'OpenAI',
+                                        'anthropic' => 'Anthropic (Claude)',
+                                        'n8n' => 'n8n',
+                                        'kanboard' => 'Kanboard API',
+                                        'other' => 'Otro',
+                                    ])
+                                    ->required()
+                                    ->columnSpan(1),
+                                Forms\Components\TextInput::make('label')
+                                    ->label('Etiqueta')
+                                    ->placeholder('Ej: OpenAI Produccion')
+                                    ->columnSpan(1),
+                                Forms\Components\Textarea::make('api_key')
+                                    ->label('API Key')
+                                    ->rows(1)
+                                    ->columnSpan(2),
+                                Forms\Components\Toggle::make('is_active')
+                                    ->label('Activa')
+                                    ->default(true)
+                                    ->columnSpan(1),
+                            ])
+                            ->columns(5)
+                            ->defaultItems(0)
+                            ->addActionLabel('Añadir credencial')
+                            ->collapsible()
+                            ->itemLabel(fn (array $state): ?string =>
+                                strtoupper($state['service'] ?? '') . ' - ' . ($state['label'] ?? 'Sin etiqueta')
+                            ),
+                    ]),
             ]);
     }
 

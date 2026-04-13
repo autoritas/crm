@@ -62,6 +62,48 @@ return [
             ]) : [],
         ],
 
+        'kanboard' => [
+            'driver' => 'mysql',
+            'host' => env('DB_KANBOARD_HOST', '127.0.0.1'),
+            'port' => env('DB_KANBOARD_PORT', '3306'),
+            'database' => env('DB_KANBOARD_DATABASE', 'kanboard'),
+            'username' => env('DB_KANBOARD_USERNAME', 'root'),
+            'password' => env('DB_KANBOARD_PASSWORD', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => false,
+            'engine' => null,
+        ],
+
+        // BD origen Absolute (solo lectura para sync)
+        'source_absolute' => [
+            'driver' => 'mysql',
+            'host' => env('DB_SOURCE_HOST', '127.0.0.1'),
+            'port' => env('DB_SOURCE_PORT', '3306'),
+            'database' => 'absolute',
+            'username' => env('DB_SOURCE_USERNAME', 'root'),
+            'password' => env('DB_SOURCE_PASSWORD', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => false,
+        ],
+
+        // BD origen Autoritas (solo lectura para sync)
+        'source_gestion' => [
+            'driver' => 'mysql',
+            'host' => env('DB_SOURCE_HOST', '127.0.0.1'),
+            'port' => env('DB_SOURCE_PORT', '3306'),
+            'database' => 'gestion',
+            'username' => env('DB_SOURCE_USERNAME', 'root'),
+            'password' => env('DB_SOURCE_PASSWORD', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => false,
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),

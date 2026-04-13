@@ -66,6 +66,11 @@ class InfonaliaData extends Model
         return $this->belongsTo(InfonaliaStatus::class, 'id_ia_decision');
     }
 
+    public function offer(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Offer::class, 'id_infonalia_data');
+    }
+
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class, 'id_client');

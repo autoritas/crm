@@ -43,6 +43,10 @@ class OfferStatusResource extends Resource
                 Forms\Components\Toggle::make('is_default_filter')
                     ->label('Filtro por defecto')
                     ->default(false),
+                Forms\Components\Toggle::make('is_default_discard')
+                    ->label('Estado descarte')
+                    ->helperText('Estado que se asigna cuando se descarta una oferta desde Kanboard.')
+                    ->default(false),
             ]);
     }
 
@@ -63,6 +67,9 @@ class OfferStatusResource extends Resource
                     ->label('Color'),
                 Tables\Columns\IconColumn::make('is_default_filter')
                     ->label('Filtro defecto')
+                    ->boolean(),
+                Tables\Columns\IconColumn::make('is_default_discard')
+                    ->label('Descarte')
                     ->boolean(),
             ])
             ->actions([

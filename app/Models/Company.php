@@ -16,6 +16,7 @@ class Company extends Model
         'logo_path',
         'icon_path',
         'primary_color',
+        'kanboard_project_id',
         'is_active',
     ];
 
@@ -44,5 +45,15 @@ class Company extends Model
     public function competitors(): HasMany
     {
         return $this->hasMany(Competitor::class, 'id_company');
+    }
+
+    public function kanboardColumns(): HasMany
+    {
+        return $this->hasMany(CompanyKanboardColumn::class, 'id_company')->orderBy('position');
+    }
+
+    public function apiCredentials(): HasMany
+    {
+        return $this->hasMany(ApiCredential::class, 'id_company');
     }
 }
