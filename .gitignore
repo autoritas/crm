@@ -21,3 +21,10 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+# Claude Code — nunca subir ajustes locales ni logs de agente
+/.claude/settings.local.json
+/.claude/**/*.local.json
+/.claude/cache/
+/.claude/logs/
+/.claude/projects/
