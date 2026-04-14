@@ -93,6 +93,14 @@ class CompanyResource extends Resource
                             ->label('ID Proyecto Kanboard')
                             ->numeric()
                             ->helperText('El ID del proyecto en Kanboard para esta empresa.'),
+                        Forms\Components\TextInput::make('kanboard_default_category_id')
+                            ->label('Categoria por defecto')
+                            ->numeric()
+                            ->helperText('ID de la categoria CONCURSO en Kanboard.'),
+                        Forms\Components\TextInput::make('kanboard_default_owner_id')
+                            ->label('Owner por defecto')
+                            ->numeric()
+                            ->helperText('ID del usuario asignado por defecto en Kanboard.'),
                         Forms\Components\Repeater::make('kanboardColumns')
                             ->relationship()
                             ->label('Columnas del tablero')

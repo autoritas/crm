@@ -256,6 +256,8 @@ class Cribado extends Page
                         'title' => $lead->cliente ?? 'Sin título',
                         'project_id' => $company->kanboard_project_id,
                         'column_id' => $prospectsColumn->kanboard_column_id,
+                        'category_id' => $company->kanboard_default_category_id,
+                        'owner_id' => $company->kanboard_default_owner_id,
                         'description' => ($lead->url ?? '') . "\n" . ($lead->resumen_objeto ?? ''),
                         'date_due' => $dueDate,
                     ],

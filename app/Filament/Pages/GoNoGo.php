@@ -50,19 +50,10 @@ class GoNoGo extends Page
             $prospectsTaskIds = collect($tasks)->pluck('id')->toArray();
         }
 
-        // También incluir las sin kanboard_task (sin asignar)
-        $sinKb = Offer::where('id_company', $companyId)
-            ->where('id_offer_status', $pendienteId)
-            ->where('go_nogo', 'PENDIENTE')
-            ->where(function ($q) { $q->whereNull('kanboard_task')->orWhere('kanboard_task', ''); })
-            ->get();
-
+        // Solo PROSPECTS - no incluir las sin kanboard_task
         $result = [];
         foreach ($offers as $offer) {
             if (!in_array((int) $offer->kanboard_task, $prospectsTaskIds)) continue;
-            $result[] = $this->formatOffer($offer);
-        }
-        foreach ($sinKb as $offer) {
             $result[] = $this->formatOffer($offer);
         }
 

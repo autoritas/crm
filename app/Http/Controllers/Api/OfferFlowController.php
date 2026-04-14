@@ -116,6 +116,8 @@ class OfferFlowController extends Controller
             'kanboard' => [
                 'project_id' => $company?->kanboard_project_id,
                 'prospects_column_id' => $prospectsColumn?->kanboard_column_id,
+                'category_id' => $company?->kanboard_default_category_id,
+                'owner_id' => $company?->kanboard_default_owner_id,
             ],
         ]);
     }

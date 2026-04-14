@@ -46,17 +46,37 @@ Route::middleware('api.key')->prefix('flow')->group(function () {
     Route::post('discard-offer', [OfferFlowController::class, 'discardOffer']);
     Route::post('update-offer-kanboard', [OfferFlowController::class, 'updateOfferKanboard']);
 
-    // Go/NoGo
+    // Go/NoGo — solo ofertas en columna PROSPECTS de Kanboard
     Route::get('go-nogo-pending', function (\Illuminate\Http\Request $request) {
         $companyId = $request->integer('company_id', 0);
+
+        $prospectsColId = \App\Models\CompanyKanboardColumn::where('id_company', $companyId)
+            ->where('name', 'PROSPECTS')->value('kanboard_column_id');
+
         $offers = \App\Models\Offer::where('id_company', $companyId)
             ->where('go_nogo', 'PENDIENTE')
             ->whereNull('ia_go_nogo')
             ->whereNotNull('kanboard_task')
+            ->where('kanboard_task', '!=', '')
             ->select('id', 'kanboard_task', 'cliente', 'objeto', 'importe_licitacion', 'url')
-            ->limit(10)
+            ->limit(20)
             ->get();
-        return response()->json(['data' => $offers]);
+
+        // Filtrar solo las que están en PROSPECTS en Kanboard
+        if ($offers->isEmpty() || !$prospectsColId) {
+            return response()->json(['data' => []]);
+        }
+
+        $taskIds = $offers->pluck('kanboard_task')->map(fn ($v) => (int) $v)->filter()->toArray();
+        $placeholders = implode(',', $taskIds);
+        $prospectsTaskIds = collect(
+            \Illuminate\Support\Facades\DB::connection('kanboard')
+                ->select("SELECT id FROM tasks WHERE id IN ({$placeholders}) AND column_id = ? AND is_active = 1", [$prospectsColId])
+        )->pluck('id')->toArray();
+
+        $filtered = $offers->filter(fn ($o) => in_array((int) $o->kanboard_task, $prospectsTaskIds))->values();
+
+        return response()->json(['data' => $filtered]);
     });
 
     Route::get('go-nogo-model', function (\Illuminate\Http\Request $request) {
@@ -77,6 +97,35 @@ Route::middleware('api.key')->prefix('flow')->group(function () {
             'ia_go_nogo_analysis' => $request->ia_analysis,
             'ia_go_nogo_date' => now(),
         ]);
+
+        // Añadir comentario en Kanboard
+        if ($offer->kanboard_task) {
+            $emoji = match($request->ia_go_nogo) {
+                'GO' => '🟢',
+                'GO_TACTICO' => '🟡',
+                'NO_GO' => '🔴',
+            };
+            $comment = "{$emoji} ANÁLISIS IA - {$request->ia_go_nogo}\n\n{$request->ia_analysis}";
+
+            try {
+                \Illuminate\Support\Facades\Http::withBasicAuth(
+                    'jsonrpc',
+                    '9f80c6b25b7aa27c3ecca472ff61dade28a2c1c750f301e10bec4580596c'
+                )->post('https://kanboard.cosmos-intelligence.com/jsonrpc.php', [
+                    'jsonrpc' => '2.0',
+                    'method' => 'createComment',
+                    'id' => 1,
+                    'params' => [
+                        'task_id' => (int) $offer->kanboard_task,
+                        'user_id' => 2,
+                        'content' => $comment,
+                    ],
+                ]);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Kanboard comment failed: ' . $e->getMessage());
+            }
+        }
+
         return response()->json(['success' => true, 'offer_id' => $offer->id]);
     });
 });

@@ -26,7 +26,7 @@ class OfferResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-queue-list';
 
-    protected static ?string $navigationLabel = 'Listados';
+    protected static ?string $navigationLabel = 'Ofertas';
 
     protected static ?string $modelLabel = 'Oferta';
 
@@ -293,7 +293,11 @@ class OfferResource extends Resource
                     ->options(['' => '-', 'Público' => 'Público', 'Privado' => 'Privado'])
                     ->sortable()->toggleable(),
                 Tables\Columns\TextInputColumn::make('fecha_presentacion')
-                    ->label('Presentacion')->type('date')->sortable()->toggleable(),
+                    ->label('Presentacion')
+                    ->type('date')
+                    ->sortable()
+                    ->toggleable()
+                    ->extraAttributes(['style' => 'min-width:130px']),
                 Tables\Columns\TextInputColumn::make('importe_licitacion')
                     ->label('Imp.Licit.')->type('number')
                     ->rules(['nullable', 'numeric'])->sortable()->toggleable(),

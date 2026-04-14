@@ -223,6 +223,28 @@ Capacidades esperadas:
 
 ---
 
+## Origen de datos legacy (sincronización)
+
+Los datos reales de las dos soluciones previas viven en el **mismo host** que se ha dado de alta para Kanboard, distribuidos en **dos bases de datos distintas**:
+
+- **BD de gestión** → datos de **Autoritas**
+- **BD de absolute** → datos de **Absolute**
+
+### Tablas relevantes en ambas BDs
+
+- `infonaliadata` → **leads / oportunidades** (presente en las dos BDs)
+- `cial_ofertas` → **ofertas** (cabecera)
+- `cial_ofertas_has_details` → detalles de oferta (necesario de entrada)
+- `cial_ofertas_has_dates` → fechas asociadas a la oferta (necesario de entrada)
+
+### Implicaciones para la sincronización
+
+- Al traer datos hay que **fusionar las dos BDs** asignando correctamente el `id_company` correspondiente (Autoritas vs Absolute) para respetar el aislamiento multiempresa.
+- La importación debe ser **idempotente** y encapsulada en servicios / acciones (no scripts sueltos dispersos).
+- El esquema legacy (`cial_*`, `infonaliadata`) **no** debe filtrarse al modelo nuevo: se mapea a las entidades limpias del CRM (Oportunidades, Ofertas, etc.).
+
+---
+
 ## Filosofía de arquitectura
 
 Claude debe priorizar una arquitectura clara, mantenible y evolutiva.
