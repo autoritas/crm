@@ -13,12 +13,12 @@ return new class extends Migration
     {
         Schema::create('client_aliases', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_company')->constrained('companies')->cascadeOnDelete();
+            $table->foreignId('company_id')->index();
             $table->string('raw_name');
             $table->foreignId('id_client')->nullable()->constrained('clients')->nullOnDelete();
             $table->timestamps();
 
-            $table->unique(['id_company', 'raw_name']);
+            $table->unique(['company_id', 'raw_name']);
             $table->index('id_client');
         });
     }

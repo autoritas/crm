@@ -27,7 +27,7 @@ class OfferTypeResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('id_company')
+                Forms\Components\Select::make('company_id')
                     ->label('Empresa')
                     ->relationship('company', 'name')
                     ->default(fn () => session('current_company_id', 1))
@@ -44,7 +44,7 @@ class OfferTypeResource extends Resource
         $companyId = session('current_company_id', 1);
 
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->where('id_company', $companyId))
+            ->modifyQueryUsing(fn (Builder $query) => $query->where('company_id', $companyId))
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('Tipo')

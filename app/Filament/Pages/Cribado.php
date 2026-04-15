@@ -36,14 +36,14 @@ class Cribado extends Page
         $companyId = (int) session('current_company_id', 1);
 
         // Obtener el status "Pendiente" para filtrar decision = Pendiente
-        $pendienteId = InfonaliaStatus::where('id_company', $companyId)
+        $pendienteId = InfonaliaStatus::where('company_id', $companyId)
             ->where('is_default_filter', true)
             ->value('id');
 
         // Agrupar por ia_decision
-        $statuses = InfonaliaStatus::where('id_company', $companyId)->get()->keyBy('id');
+        $statuses = InfonaliaStatus::where('company_id', $companyId)->get()->keyBy('id');
 
-        $items = InfonaliaData::where('id_company', $companyId)
+        $items = InfonaliaData::where('company_id', $companyId)
             ->where('id_decision', $pendienteId)
             ->whereNotNull('id_ia_decision')
             ->with(['iaDecision', 'decision'])
@@ -75,10 +75,10 @@ class Cribado extends Page
     public function confirmAll(): void
     {
         $companyId = (int) session('current_company_id', 1);
-        $pendienteId = InfonaliaStatus::where('id_company', $companyId)
+        $pendienteId = InfonaliaStatus::where('company_id', $companyId)
             ->where('is_default_filter', true)->value('id');
 
-        $items = InfonaliaData::where('id_company', $companyId)
+        $items = InfonaliaData::where('company_id', $companyId)
             ->where('id_decision', $pendienteId)
             ->whereNotNull('id_ia_decision')
             ->get();
@@ -207,17 +207,17 @@ class Cribado extends Page
             return;
         }
 
-        $companyId = $lead->id_company;
+        $companyId = $lead->company_id;
 
         // Status y tipo por defecto
-        $defaultStatus = OfferStatus::where('id_company', $companyId)
+        $defaultStatus = OfferStatus::where('company_id', $companyId)
             ->where('is_default_filter', true)->first();
-        $defaultType = OfferType::where('id_company', $companyId)
+        $defaultType = OfferType::where('company_id', $companyId)
             ->where('name', 'Concurso')->first();
 
         // Crear oferta
         $offer = Offer::create([
-            'id_company' => $companyId,
+            'company_id' => $companyId,
             'id_infonalia_data' => $lead->id,
             'cliente' => $lead->cliente,
             'id_client' => $lead->id_client,
@@ -289,13 +289,13 @@ class Cribado extends Page
     public function getStatusOptions(): array
     {
         $companyId = (int) session('current_company_id', 1);
-        return InfonaliaStatus::where('id_company', $companyId)->pluck('status', 'id')->toArray();
+        return InfonaliaStatus::where('company_id', $companyId)->pluck('status', 'id')->toArray();
     }
 
     public function getNegativeReasons(): array
     {
         $companyId = (int) session('current_company_id', 1);
-        return ScreeningReason::where('id_company', $companyId)
+        return ScreeningReason::where('company_id', $companyId)
             ->where('type', 'negative')
             ->pluck('reason', 'id')->toArray();
     }
@@ -303,7 +303,7 @@ class Cribado extends Page
     public function getPositiveReasons(): array
     {
         $companyId = (int) session('current_company_id', 1);
-        return ScreeningReason::where('id_company', $companyId)
+        return ScreeningReason::where('company_id', $companyId)
             ->where('type', 'positive')
             ->pluck('reason', 'id')->toArray();
     }

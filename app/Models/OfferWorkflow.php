@@ -2,15 +2,17 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OfferWorkflow extends Model
 {
-    protected $fillable = ['id_company', 'name', 'color', 'sort_order'];
+    use BelongsToCompany;
+    protected $fillable = ['company_id', 'name', 'color', 'sort_order'];
 
     public function company(): BelongsTo
     {
-        return $this->belongsTo(Company::class, 'id_company');
+        return $this->belongsTo(Company::class, 'company_id');
     }
 }

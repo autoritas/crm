@@ -38,7 +38,7 @@ class ClientResource extends Resource
 
         return $form
             ->schema([
-                Forms\Components\Hidden::make('id_company')
+                Forms\Components\Hidden::make('company_id')
                     ->default($companyId),
 
                 Forms\Components\Section::make('Datos del cliente')
@@ -92,7 +92,7 @@ class ClientResource extends Resource
         $companyId = static::getCompanyId();
 
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->where('id_company', $companyId))
+            ->modifyQueryUsing(fn (Builder $query) => $query->where('company_id', $companyId))
             ->defaultSort('name')
             ->columns([
                 Tables\Columns\TextColumn::make('name')

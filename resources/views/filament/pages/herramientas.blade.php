@@ -23,7 +23,7 @@
                                     {{ $company->name }}
                                 </div>
                                 <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    id_company: {{ $company->id }} ·
+                                    company_id: {{ $company->id }} ·
                                     BD: {{ $company->id === 1 ? 'gestion' : ($company->id === 2 ? 'absolute' : '—') }}
                                 </div>
                             </div>

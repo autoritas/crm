@@ -21,12 +21,12 @@ class InfonaliaDataObserver
 
     private function linkClient(InfonaliaData $record): void
     {
-        if (empty($record->cliente) || !$record->id_company) {
+        if (empty($record->cliente) || !$record->company_id) {
             return;
         }
 
         // Registra el nombre crudo en aliases y obtiene el client_id si está vinculado
-        $clientId = ClientAlias::resolveClientId($record->id_company, $record->cliente);
+        $clientId = ClientAlias::resolveClientId($record->company_id, $record->cliente);
         $record->id_client = $clientId;
     }
 }

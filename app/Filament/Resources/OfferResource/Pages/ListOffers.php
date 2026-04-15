@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\OfferResource\Pages;
 
+
 use App\Filament\Resources\OfferResource;
 use App\Filament\Traits\PersistsColumnToggles;
 use Filament\Actions;

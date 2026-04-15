@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('api_credentials', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_company')->nullable()->constrained('companies')->cascadeOnDelete();
+            $table->foreignId('company_id')->nullable()->index();
             $table->string('service');
             $table->string('label')->nullable();
             $table->string('base_url')->nullable();
@@ -23,7 +23,7 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->timestamps();
 
-            $table->index(['id_company', 'service']);
+            $table->index(['company_id', 'service']);
         });
     }
 

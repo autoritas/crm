@@ -133,12 +133,12 @@ class CompanyResource extends Resource
                             ->relationship(
                                 'apiCredentials',
                                 modifyQueryUsing: fn ($query, $record) => $record
-                                    ? $query->where('id_company', $record->id)
+                                    ? $query->where('company_id', $record->id)
                                     : $query
                             )
                             ->label('')
                             ->schema([
-                                Forms\Components\Hidden::make('id_company')
+                                Forms\Components\Hidden::make('company_id')
                                     ->default(fn ($livewire) => $livewire->record?->id),
                                 Forms\Components\Select::make('service')
                                     ->label('Servicio')

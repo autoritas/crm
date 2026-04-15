@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('offers', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_company')->constrained('companies')->cascadeOnDelete();
+            $table->foreignId('company_id')->index();
             $table->foreignId('id_opportunity')->nullable()->constrained('opportunities')->nullOnDelete();
             $table->string('reference')->nullable();
             $table->string('title');
@@ -21,7 +21,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
 
-            $table->index('id_company');
+            $table->index('company_id');
         });
     }
 

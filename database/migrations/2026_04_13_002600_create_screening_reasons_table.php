@@ -13,12 +13,12 @@ return new class extends Migration
     {
         Schema::create('screening_reasons', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_company')->constrained('companies')->cascadeOnDelete();
+            $table->foreignId('company_id')->index();
             $table->enum('type', ['positive', 'negative']);
             $table->string('reason');
             $table->timestamps();
 
-            $table->index(['id_company', 'type']);
+            $table->index(['company_id', 'type']);
         });
     }
 

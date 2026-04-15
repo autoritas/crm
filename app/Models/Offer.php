@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,10 +10,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Offer extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToCompany;
 
     protected $fillable = [
-        'id_company', 'id_infonalia_data', 'cliente', 'id_client',
+        'company_id', 'id_infonalia_data', 'cliente', 'id_client',
         // Proyecto
         'codigo_proyecto', 'proyecto', 'objeto', 'sector',
         'id_offer_type', 'id_offer_status', 'temperatura',
@@ -50,7 +51,7 @@ class Offer extends Model
         ];
     }
 
-    public function company(): BelongsTo { return $this->belongsTo(Company::class, 'id_company'); }
+    public function company(): BelongsTo { return $this->belongsTo(Company::class, 'company_id'); }
     public function infonaliaData(): BelongsTo { return $this->belongsTo(InfonaliaData::class, 'id_infonalia_data'); }
     public function client(): BelongsTo { return $this->belongsTo(Client::class, 'id_client'); }
     public function offerStatus(): BelongsTo { return $this->belongsTo(OfferStatus::class, 'id_offer_status'); }

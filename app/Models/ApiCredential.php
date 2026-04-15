@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ApiCredential extends Model
 {
+    use BelongsToCompany;
     protected $fillable = [
-        'id_company', 'service', 'label', 'base_url', 'api_key', 'folder', 'extra', 'is_active',
+        'company_id', 'service', 'label', 'base_url', 'api_key', 'folder', 'extra', 'is_active',
     ];
 
     protected function casts(): array
@@ -22,7 +24,7 @@ class ApiCredential extends Model
 
     public function company(): BelongsTo
     {
-        return $this->belongsTo(Company::class, 'id_company');
+        return $this->belongsTo(Company::class, 'company_id');
     }
 
     /**
@@ -33,12 +35,12 @@ class ApiCredential extends Model
         return static::where('service', $service)
             ->where('is_active', true)
             ->where(function ($q) use ($companyId) {
-                $q->whereNull('id_company');
+                $q->whereNull('company_id');
                 if ($companyId) {
-                    $q->orWhere('id_company', $companyId);
+                    $q->orWhere('company_id', $companyId);
                 }
             })
-            ->orderByRaw('id_company IS NULL ASC')
+            ->orderByRaw('company_id IS NULL ASC')
             ->first();
     }
 }

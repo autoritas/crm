@@ -50,11 +50,11 @@ class OfferDatesResource extends Resource
     public static function table(Table $table): Table
     {
         $cid = static::getCompanyId();
-        $statusOptions = OfferStatus::where('id_company', $cid)->pluck('status', 'id')->toArray();
-        $typeOptions = OfferType::where('id_company', $cid)->pluck('name', 'id')->toArray();
-        $workflowOptions = OfferWorkflow::where('id_company', $cid)->orderBy('sort_order')->pluck('name', 'id')->toArray();
+        $statusOptions = OfferStatus::where('company_id', $cid)->pluck('status', 'id')->toArray();
+        $typeOptions = OfferType::where('company_id', $cid)->pluck('name', 'id')->toArray();
+        $workflowOptions = OfferWorkflow::where('company_id', $cid)->orderBy('sort_order')->pluck('name', 'id')->toArray();
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->where('id_company', $cid))
+            ->modifyQueryUsing(fn (Builder $query) => $query->where('company_id', $cid))
             ->defaultSort('fecha_presentacion', 'desc')
             ->defaultPaginationPageOption(100)
             ->paginationPageOptions([25, 50, 100])

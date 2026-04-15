@@ -11,10 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Modelo Go/NoGo por empresa (texto grande con los criterios para la IA)
-        Schema::table('companies', function (Blueprint $table) {
-            $table->longText('go_nogo_model')->nullable()->after('kanboard_project_id');
-        });
+        // Nota: `companies.go_nogo_model` vive en la BD de Stockflow Core
+        // (ver migracion de core que anade campos CRM a companies).
 
         // Campos Go/NoGo en ofertas
         Schema::table('offers', function (Blueprint $table) {
@@ -29,9 +27,6 @@ return new class extends Migration
     {
         Schema::table('offers', function (Blueprint $table) {
             $table->dropColumn(['go_nogo', 'ia_go_nogo', 'ia_go_nogo_analysis', 'ia_go_nogo_date']);
-        });
-        Schema::table('companies', function (Blueprint $table) {
-            $table->dropColumn('go_nogo_model');
         });
     }
 };

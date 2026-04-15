@@ -29,11 +29,11 @@ class Indicadores extends Page
     {
         $companyId = (int) session('current_company_id', 1);
 
-        $pendienteId = OfferStatus::where('id_company', $companyId)
+        $pendienteId = OfferStatus::where('company_id', $companyId)
             ->where('is_default_filter', true)
             ->value('id');
 
-        $offers = Offer::where('id_company', $companyId)
+        $offers = Offer::where('company_id', $companyId)
             ->where('id_offer_status', $pendienteId)
             ->whereNotNull('fecha_presentacion')
             ->with(['offerType'])
@@ -41,7 +41,7 @@ class Indicadores extends Page
             ->get();
 
         // Obtener columna Kanboard de cada oferta
-        $columns = CompanyKanboardColumn::where('id_company', $companyId)
+        $columns = CompanyKanboardColumn::where('company_id', $companyId)
             ->pluck('name', 'kanboard_column_id')
             ->toArray();
 
@@ -84,7 +84,7 @@ class Indicadores extends Page
     public function getKanboardPhases(): array
     {
         $companyId = (int) session('current_company_id', 1);
-        $phases = CompanyKanboardColumn::where('id_company', $companyId)
+        $phases = CompanyKanboardColumn::where('company_id', $companyId)
             ->where('name', '!=', 'GANADO')
             ->orderBy('position')
             ->pluck('name')
@@ -112,9 +112,9 @@ class Indicadores extends Page
         $companyId = (int) session('current_company_id', 1);
         $year = now()->year;
 
-        $ganadoId = OfferStatus::where('id_company', $companyId)->where('status', 'Ganado')->value('id');
-        $perdidoId = OfferStatus::where('id_company', $companyId)->where('status', 'Perdido')->value('id');
-        $pendienteId = OfferStatus::where('id_company', $companyId)->where('is_default_filter', true)->value('id');
+        $ganadoId = OfferStatus::where('company_id', $companyId)->where('status', 'Ganado')->value('id');
+        $perdidoId = OfferStatus::where('company_id', $companyId)->where('status', 'Perdido')->value('id');
+        $pendienteId = OfferStatus::where('company_id', $companyId)->where('is_default_filter', true)->value('id');
 
         $statusMap = [
             'ganadas' => $ganadoId,
@@ -122,7 +122,7 @@ class Indicadores extends Page
             'perdidas' => $perdidoId,
         ];
 
-        $query = Offer::where('id_company', $companyId)
+        $query = Offer::where('company_id', $companyId)
             ->whereNotNull('fecha_presentacion')
             ->with(['offerStatus', 'offerType']);
 

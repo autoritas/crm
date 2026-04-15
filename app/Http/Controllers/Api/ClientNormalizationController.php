@@ -21,9 +21,9 @@ class ClientNormalizationController extends Controller
         $limit = $request->integer('limit', 50);
 
         $aliases = ClientAlias::whereNull('id_client')
-            ->when($companyId, fn ($q) => $q->where('id_company', $companyId))
+            ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
             ->limit($limit)
-            ->get(['id', 'id_company', 'raw_name']);
+            ->get(['id', 'company_id', 'raw_name']);
 
         return response()->json(['data' => $aliases, 'total' => $aliases->count()]);
     }
@@ -37,8 +37,8 @@ class ClientNormalizationController extends Controller
         $companyId = $request->integer('company_id', 0);
         $limit = $request->integer('limit', 50);
 
-        $clients = Client::select('id', 'id_company', 'name', 'cif')
-            ->when($companyId, fn ($q) => $q->where('id_company', $companyId))
+        $clients = Client::select('id', 'company_id', 'name', 'cif')
+            ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
             ->orderBy('name')
             ->limit($limit)
             ->get();
@@ -55,8 +55,8 @@ class ClientNormalizationController extends Controller
         $companyId = $request->integer('company_id', 0);
         $search = $request->string('search', '');
 
-        $clients = Client::select('id', 'id_company', 'name')
-            ->when($companyId, fn ($q) => $q->where('id_company', $companyId))
+        $clients = Client::select('id', 'company_id', 'name')
+            ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
             ->when($search, fn ($q) => $q->where('name', 'LIKE', "%{$search}%"))
             ->orderBy('name')
             ->limit(20)
@@ -81,7 +81,7 @@ class ClientNormalizationController extends Controller
         $alias->update(['id_client' => $request->client_id]);
 
         // Propagar a infonalia_data
-        $updated = InfonaliaData::where('id_company', $alias->id_company)
+        $updated = InfonaliaData::where('company_id', $alias->company_id)
             ->where('cliente', $alias->raw_name)
             ->whereNull('id_client')
             ->update(['id_client' => $request->client_id]);
@@ -110,13 +110,13 @@ class ClientNormalizationController extends Controller
         $alias = ClientAlias::findOrFail($request->alias_id);
 
         $client = Client::firstOrCreate(
-            ['id_company' => $alias->id_company, 'name' => $request->name],
+            ['company_id' => $alias->company_id, 'name' => $request->name],
             ['cif' => $request->cif]
         );
 
         $alias->update(['id_client' => $client->id]);
 
-        $updated = InfonaliaData::where('id_company', $alias->id_company)
+        $updated = InfonaliaData::where('company_id', $alias->company_id)
             ->where('cliente', $alias->raw_name)
             ->whereNull('id_client')
             ->update(['id_client' => $client->id]);

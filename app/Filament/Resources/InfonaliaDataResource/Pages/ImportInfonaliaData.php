@@ -81,7 +81,7 @@ class ImportInfonaliaData extends Page
             'created_at' => 'created_at',
         ];
 
-        $statuses = InfonaliaStatus::where('id_company', $companyId)
+        $statuses = InfonaliaStatus::where('company_id', $companyId)
             ->pluck('id', 'status')
             ->mapWithKeys(fn ($id, $name) => [strtolower(trim($name)) => $id])
             ->toArray();
@@ -103,7 +103,7 @@ class ImportInfonaliaData extends Page
             }
 
             $csvRow = array_combine($header, $line);
-            $record = ['id_company' => $companyId];
+            $record = ['company_id' => $companyId];
 
             foreach ($columnMap as $csvCol => $dbField) {
                 if (!isset($csvRow[$csvCol])) continue;

@@ -14,11 +14,11 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Sincroniza los datos desde las dos BDs legacy (gestion = Autoritas, absolute = Absolute)
- * hacia el modelo nuevo del CRM. Idempotente via (id_company, legacy_id).
+ * hacia el modelo nuevo del CRM. Idempotente via (company_id, legacy_id).
  */
 class LegacySyncService
 {
-    /** Mapea id_company (1=Autoritas, 2=Absolute) a la conexión legacy correspondiente. */
+    /** Mapea company_id (1=Autoritas, 2=Absolute) a la conexión legacy correspondiente. */
     private const CONNECTIONS = [
         1 => 'source_gestion',
         2 => 'source_absolute',
@@ -35,7 +35,7 @@ class LegacySyncService
     public function syncLeads(int $companyId): array
     {
         $conn = $this->connectionFor($companyId);
-        $statuses = InfonaliaStatus::where('id_company', $companyId)
+        $statuses = InfonaliaStatus::where('company_id', $companyId)
             ->pluck('id', 'status')->all();
 
         $inserted = 0;
@@ -50,7 +50,7 @@ class LegacySyncService
                     $idIaDecision = $row->ia_decision ? ($statuses[$row->ia_decision] ?? null) : null;
 
                     $data = [
-                        'id_company' => $companyId,
+                        'company_id' => $companyId,
                         'id_decision' => $idDecision,
                         'id_ia_decision' => $idIaDecision,
                         'ia_motivo' => $row->ia_motivo,
@@ -69,7 +69,7 @@ class LegacySyncService
                         'kanboard_task_id' => $row->kanboard_task_id,
                     ];
 
-                    $existing = InfonaliaData::where('id_company', $companyId)
+                    $existing = InfonaliaData::where('company_id', $companyId)
                         ->where('legacy_id', $row->id)->first();
 
                     if ($existing) {
@@ -91,13 +91,13 @@ class LegacySyncService
     {
         $conn = $this->connectionFor($companyId);
 
-        $offerStatuses = OfferStatus::where('id_company', $companyId)->pluck('id', 'status')->all();
-        $offerTypes = OfferType::where('id_company', $companyId)->pluck('id', 'name')->all();
-        $businessLines = OfferBusinessLine::where('id_company', $companyId)->pluck('id', 'name')->all();
-        $clientActivities = OfferClientActivity::where('id_company', $companyId)->pluck('id', 'name')->all();
-        $workflows = OfferWorkflow::where('id_company', $companyId)->pluck('id', 'name')->all();
+        $offerStatuses = OfferStatus::where('company_id', $companyId)->pluck('id', 'status')->all();
+        $offerTypes = OfferType::where('company_id', $companyId)->pluck('id', 'name')->all();
+        $businessLines = OfferBusinessLine::where('company_id', $companyId)->pluck('id', 'name')->all();
+        $clientActivities = OfferClientActivity::where('company_id', $companyId)->pluck('id', 'name')->all();
+        $workflows = OfferWorkflow::where('company_id', $companyId)->pluck('id', 'name')->all();
 
-        $infonaliaMap = InfonaliaData::where('id_company', $companyId)
+        $infonaliaMap = InfonaliaData::where('company_id', $companyId)
             ->whereNotNull('legacy_id')->pluck('id', 'legacy_id')->all();
 
         $inserted = 0;
@@ -130,8 +130,7 @@ class LegacySyncService
                     }
 
                     $data = [
-                        'id_company' => $companyId,
-                        'id_infonalia_data' => $idInfonalia,
+                        'company_id' => $companyId,
                         'codigo_proyecto' => $row->codigo_proyecto,
                         'cliente' => $row->cliente,
                         'proyecto' => $row->proyecto,
@@ -160,8 +159,14 @@ class LegacySyncService
                         'fecha_fin_contrato' => $dt->fecha_fin_contrato ?? null,
                     ];
 
-                    $existing = Offer::where('id_company', $companyId)
+                    $existing = Offer::where('company_id', $companyId)
                         ->where('legacy_id', $row->id)->first();
+
+                    // id_infonalia_data: solo se fija si hemos podido resolverlo,
+                    // nunca se sobrescribe a null en un registro existente que ya lo tenía.
+                    if ($idInfonalia !== null) {
+                        $data['id_infonalia_data'] = $idInfonalia;
+                    }
 
                     if ($existing) {
                         $existing->fill($data)->save();
@@ -169,6 +174,9 @@ class LegacySyncService
                     } else {
                         $model = new Offer($data);
                         $model->legacy_id = $row->id;
+                        if ($idInfonalia !== null) {
+                            $model->id_infonalia_data = $idInfonalia;
+                        }
                         $model->save();
                         $inserted++;
                     }

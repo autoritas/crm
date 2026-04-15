@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\InfonaliaDataResource\Pages;
 
+
 use App\Filament\Resources\InfonaliaDataResource;
 use App\Filament\Traits\PersistsColumnToggles;
 use Filament\Actions;

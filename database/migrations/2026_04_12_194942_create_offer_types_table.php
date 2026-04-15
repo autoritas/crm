@@ -13,11 +13,11 @@ return new class extends Migration
     {
         Schema::create('offer_types', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_company')->constrained('companies')->cascadeOnDelete();
+            $table->foreignId('company_id')->index();
             $table->string('name');
             $table->timestamps();
 
-            $table->unique(['id_company', 'name']);
+            $table->unique(['company_id', 'name']);
         });
     }
 

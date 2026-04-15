@@ -12,22 +12,22 @@ return new class extends Migration
         Schema::dropIfExists('competitors');
         Schema::create('competitors', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_company')->constrained('companies')->cascadeOnDelete();
+            $table->foreignId('company_id')->index();
             $table->string('name');
             $table->string('cif', 20)->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
-            $table->index('id_company');
+            $table->index('company_id');
         });
 
         // Aliases de competidores (como client_aliases)
         Schema::create('competitor_aliases', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_company')->constrained('companies')->cascadeOnDelete();
+            $table->foreignId('company_id')->index();
             $table->string('raw_name');
             $table->foreignId('id_competitor')->nullable()->constrained('competitors')->nullOnDelete();
             $table->timestamps();
-            $table->unique(['id_company', 'raw_name']);
+            $table->unique(['company_id', 'raw_name']);
         });
 
         // Competidores por oferta

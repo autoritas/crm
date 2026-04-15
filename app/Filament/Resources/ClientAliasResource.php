@@ -46,7 +46,7 @@ class ClientAliasResource extends Resource
                 Forms\Components\Select::make('id_client')
                     ->label('Cliente normalizado')
                     ->options(
-                        Client::where('id_company', $companyId)
+                        Client::where('company_id', $companyId)
                             ->orderBy('name')
                             ->pluck('name', 'id')
                     )
@@ -54,7 +54,7 @@ class ClientAliasResource extends Resource
                     ->preload()
                     ->nullable()
                     ->createOptionForm([
-                        Forms\Components\Hidden::make('id_company')
+                        Forms\Components\Hidden::make('company_id')
                             ->default(fn () => session('current_company_id', 1)),
                         Forms\Components\TextInput::make('name')
                             ->label('Nombre normalizado')
@@ -77,7 +77,7 @@ class ClientAliasResource extends Resource
         $companyId = static::getCompanyId();
 
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->where('id_company', $companyId))
+            ->modifyQueryUsing(fn (Builder $query) => $query->where('company_id', $companyId))
             ->defaultSort('raw_name')
             ->defaultPaginationPageOption(100)
             ->paginationPageOptions([25, 50, 100])
@@ -93,7 +93,7 @@ class ClientAliasResource extends Resource
                 Tables\Columns\SelectColumn::make('id_client')
                     ->label('Cliente normalizado')
                     ->options(fn () =>
-                        Client::where('id_company', static::getCompanyId())
+                        Client::where('company_id', static::getCompanyId())
                             ->orderBy('name')
                             ->pluck('name', 'id')
                             ->toArray()
@@ -103,7 +103,7 @@ class ClientAliasResource extends Resource
                 Tables\Columns\TextColumn::make('infonalia_count')
                     ->label('Registros')
                     ->getStateUsing(fn ($record) =>
-                        \App\Models\InfonaliaData::where('id_company', $record->id_company)
+                        \App\Models\InfonaliaData::where('company_id', $record->company_id)
                             ->where('cliente', $record->raw_name)
                             ->count()
                     )
@@ -136,14 +136,14 @@ class ClientAliasResource extends Resource
                             Forms\Components\Select::make('id_client')
                                 ->label('Cliente normalizado')
                                 ->options(
-                                    Client::where('id_company', static::getCompanyId())
+                                    Client::where('company_id', static::getCompanyId())
                                         ->orderBy('name')
                                         ->pluck('name', 'id')
                                 )
                                 ->searchable()
                                 ->required()
                                 ->createOptionForm([
-                                    Forms\Components\Hidden::make('id_company')
+                                    Forms\Components\Hidden::make('company_id')
                                         ->default(fn () => session('current_company_id', 1)),
                                     Forms\Components\TextInput::make('name')
                                         ->label('Nombre normalizado')
@@ -160,7 +160,7 @@ class ClientAliasResource extends Resource
                                 $alias->update(['id_client' => $clientId]);
 
                                 // Actualizar los registros de infonalia vinculados
-                                \App\Models\InfonaliaData::where('id_company', $alias->id_company)
+                                \App\Models\InfonaliaData::where('company_id', $alias->company_id)
                                     ->where('cliente', $alias->raw_name)
                                     ->update(['id_client' => $clientId]);
                             }

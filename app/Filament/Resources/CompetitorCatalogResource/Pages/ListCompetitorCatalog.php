@@ -2,12 +2,16 @@
 
 namespace App\Filament\Resources\CompetitorCatalogResource\Pages;
 
+
+use App\Filament\Traits\PersistsColumnToggles;
 use App\Filament\Resources\CompetitorCatalogResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
 class ListCompetitorCatalog extends ListRecords
 {
+    use PersistsColumnToggles;
+
     protected static string $resource = CompetitorCatalogResource::class;
 
     protected function getHeaderActions(): array

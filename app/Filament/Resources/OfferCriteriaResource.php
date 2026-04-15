@@ -46,7 +46,7 @@ class OfferCriteriaResource extends Resource
                 Forms\Components\TextInput::make('peso_objetiva_fake')->label('Peso objetiva fake (%)')->numeric()->suffix('%'),
                 Forms\Components\Select::make('id_formula')
                     ->label('Formula')
-                    ->options(OfferFormula::where('id_company', $cid)->pluck('name', 'id'))
+                    ->options(OfferFormula::where('company_id', $cid)->pluck('name', 'id'))
                     ->searchable(),
             ])->columns(3),
         ]);
@@ -55,11 +55,11 @@ class OfferCriteriaResource extends Resource
     public static function table(Table $table): Table
     {
         $cid = static::getCompanyId();
-        $statusOptions = OfferStatus::where('id_company', $cid)->pluck('status', 'id')->toArray();
-        $typeOptions = OfferType::where('id_company', $cid)->pluck('name', 'id')->toArray();
-        $workflowOptions = OfferWorkflow::where('id_company', $cid)->orderBy('sort_order')->pluck('name', 'id')->toArray();
+        $statusOptions = OfferStatus::where('company_id', $cid)->pluck('status', 'id')->toArray();
+        $typeOptions = OfferType::where('company_id', $cid)->pluck('name', 'id')->toArray();
+        $workflowOptions = OfferWorkflow::where('company_id', $cid)->orderBy('sort_order')->pluck('name', 'id')->toArray();
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->where('id_company', $cid))
+            ->modifyQueryUsing(fn (Builder $query) => $query->where('company_id', $cid))
             ->defaultSort('fecha_presentacion', 'desc')
             ->defaultPaginationPageOption(100)
             ->paginationPageOptions([25, 50, 100])
@@ -93,7 +93,7 @@ class OfferCriteriaResource extends Resource
                     ->rules(['nullable', 'numeric', 'min:0', 'max:100'])
                     ->extraAttributes(['style' => 'min-width:70px;text-align:right']),
                 Tables\Columns\SelectColumn::make('id_formula')->label('Formula')
-                    ->options(OfferFormula::where('id_company', static::getCompanyId())->pluck('name', 'id')->toArray())
+                    ->options(OfferFormula::where('company_id', static::getCompanyId())->pluck('name', 'id')->toArray())
                     ->sortable()->toggleable(),
                 Tables\Columns\TextColumn::make('offerType.name')->label('Tipo')->sortable()->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('sector')->label('Sector')->toggleable(isToggledHiddenByDefault: true),
@@ -136,7 +136,7 @@ class OfferCriteriaResource extends Resource
                             Forms\Components\TextInput::make('peso_objetiva_real')->label('Obj. Real %')->numeric()->suffix('%'),
                             Forms\Components\TextInput::make('peso_objetiva_fake')->label('Obj. Fake %')->numeric()->suffix('%'),
                             Forms\Components\Select::make('id_formula')->label('Formula')
-                                ->options(OfferFormula::where('id_company', static::getCompanyId())->pluck('name', 'id')),
+                                ->options(OfferFormula::where('company_id', static::getCompanyId())->pluck('name', 'id')),
                         ]),
                     ])
                     ->action(fn ($record, array $data) => $record->update($data)),

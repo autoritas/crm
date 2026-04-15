@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::table('offers', function (Blueprint $table) {
             $table->unsignedBigInteger('legacy_id')->nullable()->after('id');
-            $table->unique(['id_company', 'legacy_id'], 'offers_company_legacy_unique');
+            $table->unique(['company_id', 'legacy_id'], 'offers_company_legacy_unique');
         });
     }
 

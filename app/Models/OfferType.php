@@ -2,18 +2,20 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OfferType extends Model
 {
+    use BelongsToCompany;
     protected $fillable = [
-        'id_company',
+        'company_id',
         'name',
     ];
 
     public function company(): BelongsTo
     {
-        return $this->belongsTo(Company::class, 'id_company');
+        return $this->belongsTo(Company::class, 'company_id');
     }
 }

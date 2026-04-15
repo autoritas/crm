@@ -2,20 +2,22 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ClientAlias extends Model
 {
+    use BelongsToCompany;
     protected $fillable = [
-        'id_company',
+        'company_id',
         'raw_name',
         'id_client',
     ];
 
     public function company(): BelongsTo
     {
-        return $this->belongsTo(Company::class, 'id_company');
+        return $this->belongsTo(Company::class, 'company_id');
     }
 
     public function client(): BelongsTo
@@ -34,7 +36,7 @@ class ClientAlias extends Model
         }
 
         $alias = self::firstOrCreate(
-            ['id_company' => $companyId, 'raw_name' => $normalized],
+            ['company_id' => $companyId, 'raw_name' => $normalized],
         );
 
         return $alias->id_client;

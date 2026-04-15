@@ -13,13 +13,13 @@ return new class extends Migration
     {
         Schema::create('offer_statuses', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_company')->constrained('companies')->cascadeOnDelete();
+            $table->foreignId('company_id')->index();
             $table->string('status');
             $table->string('color', 7)->default('#6b7280');
             $table->boolean('is_default_filter')->default(false);
             $table->timestamps();
 
-            $table->unique(['id_company', 'status']);
+            $table->unique(['company_id', 'status']);
         });
     }
 

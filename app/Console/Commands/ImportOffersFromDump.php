@@ -28,17 +28,17 @@ class ImportOffersFromDump extends Command
 
         $this->info("Importing for company {$companyId} from {$sourceDb}...");
 
-        $statuses = OfferStatus::where('id_company', $companyId)
+        $statuses = OfferStatus::where('company_id', $companyId)
             ->pluck('id', 'status')->mapWithKeys(fn ($id, $n) => [strtolower(trim($n)) => $id])->toArray();
-        $types = OfferType::where('id_company', $companyId)
+        $types = OfferType::where('company_id', $companyId)
             ->pluck('id', 'name')->mapWithKeys(fn ($id, $n) => [strtolower(trim($n)) => $id])->toArray();
-        $businessLines = OfferBusinessLine::where('id_company', $companyId)
+        $businessLines = OfferBusinessLine::where('company_id', $companyId)
             ->pluck('id', 'name')->mapWithKeys(fn ($id, $n) => [strtolower(trim($n)) => $id])->toArray();
-        $activities = OfferClientActivity::where('id_company', $companyId)
+        $activities = OfferClientActivity::where('company_id', $companyId)
             ->pluck('id', 'name')->mapWithKeys(fn ($id, $n) => [strtolower(trim($n)) => $id])->toArray();
-        $workflows = OfferWorkflow::where('id_company', $companyId)
+        $workflows = OfferWorkflow::where('company_id', $companyId)
             ->pluck('id', 'name')->mapWithKeys(fn ($id, $n) => [strtolower(trim($n)) => $id])->toArray();
-        $formulas = OfferFormula::where('id_company', $companyId)
+        $formulas = OfferFormula::where('company_id', $companyId)
             ->pluck('id', 'name')->mapWithKeys(fn ($id, $n) => [strtolower(trim($n)) => $id])->toArray();
 
         $defaultStatus = $statuses['pendiente'] ?? null;
@@ -65,7 +65,7 @@ class ImportOffersFromDump extends Command
             $clientId = !empty($src->cliente) ? ClientAlias::resolveClientId($companyId, $src->cliente) : null;
 
             $offer = Offer::create([
-                'id_company' => $companyId,
+                'company_id' => $companyId,
                 'codigo_proyecto' => $src->codigo_proyecto,
                 'cliente' => $src->cliente,
                 'id_client' => $clientId,
@@ -169,15 +169,15 @@ class ImportOffersFromDump extends Command
         // 6. Normalizar competidores nuevos
         $this->info('Normalizing competitors...');
         $normalized = 0;
-        foreach (\App\Models\CompetitorAlias::where('id_company', $companyId)->whereNull('id_competitor')->get() as $alias) {
+        foreach (\App\Models\CompetitorAlias::where('company_id', $companyId)->whereNull('id_competitor')->get() as $alias) {
             $key = \App\Services\ClientNormalizer::normalizeKey($alias->raw_name);
             $cleanName = \App\Services\ClientNormalizer::cleanName($key);
             $competitor = \App\Models\Competitor::firstOrCreate(
-                ['id_company' => $companyId, 'name' => $cleanName]
+                ['company_id' => $companyId, 'name' => $cleanName]
             );
             $alias->update(['id_competitor' => $competitor->id]);
             OfferCompetitor::where('competitor_nombre', $alias->raw_name)
-                ->whereHas('offer', fn ($q) => $q->where('id_company', $companyId))
+                ->whereHas('offer', fn ($q) => $q->where('company_id', $companyId))
                 ->whereNull('id_competitor')
                 ->update(['id_competitor' => $competitor->id]);
             $normalized++;

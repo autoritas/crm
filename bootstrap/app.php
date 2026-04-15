@@ -12,8 +12,15 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // EnsureUserAccess: si el usuario pierde acceso al CRM en core,
+        // lo deslogueamos automaticamente en cualquier peticion web.
+        $middleware->web(append: [
+            \App\Http\Middleware\EnsureUserAccess::class,
+        ]);
+
         $middleware->alias([
             'api.key' => \App\Http\Middleware\ValidateApiKey::class,
+            'role' => \App\Http\Middleware\RequireRole::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

@@ -26,13 +26,13 @@ class GoNoGo extends Page
     {
         $companyId = (int) session('current_company_id', 1);
 
-        $pendienteId = OfferStatus::where('id_company', $companyId)
+        $pendienteId = OfferStatus::where('company_id', $companyId)
             ->where('is_default_filter', true)->value('id');
 
-        $prospectsColId = CompanyKanboardColumn::where('id_company', $companyId)
+        $prospectsColId = CompanyKanboardColumn::where('company_id', $companyId)
             ->where('name', 'PROSPECTS')->value('kanboard_column_id');
 
-        $offers = Offer::where('id_company', $companyId)
+        $offers = Offer::where('company_id', $companyId)
             ->where('id_offer_status', $pendienteId)
             ->where('go_nogo', 'PENDIENTE')
             ->whereNotNull('kanboard_task')
@@ -100,9 +100,9 @@ class GoNoGo extends Page
     public function decideNoGo(int $offerId): void
     {
         $offer = Offer::findOrFail($offerId);
-        $companyId = $offer->id_company;
+        $companyId = $offer->company_id;
 
-        $discardStatus = OfferStatus::where('id_company', $companyId)
+        $discardStatus = OfferStatus::where('company_id', $companyId)
             ->where('is_default_discard', true)->first();
 
         $offer->update([
@@ -120,7 +120,7 @@ class GoNoGo extends Page
     {
         if (!$offer->kanboard_task) return;
 
-        $company = Company::with('kanboardColumns')->find($offer->id_company);
+        $company = Company::with('kanboardColumns')->find($offer->company_id);
         $column = $company?->kanboardColumns->firstWhere('name', $columnName);
         if (!$column) return;
 

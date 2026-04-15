@@ -19,7 +19,7 @@ return new class extends Migration
 
         Schema::create('offers', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_company')->constrained('companies')->cascadeOnDelete();
+            $table->foreignId('company_id')->index();
 
             // Origen: de donde viene la oferta
             $table->foreignId('id_infonalia_data')->nullable()->constrained('infonalia_data')->nullOnDelete();
@@ -52,8 +52,8 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->index('id_company');
-            $table->index(['id_company', 'id_offer_status']);
+            $table->index('company_id');
+            $table->index(['company_id', 'id_offer_status']);
         });
     }
 

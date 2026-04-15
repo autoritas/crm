@@ -19,19 +19,19 @@ class KpiService
 
     public function pendientes(): array
     {
-        $pendienteId = OfferStatus::where('id_company', $this->companyId)
+        $pendienteId = OfferStatus::where('company_id', $this->companyId)
             ->where('is_default_filter', true)
             ->value('id');
 
         // Ofertas pendientes con kanboard_task
-        $offers = Offer::where('id_company', $this->companyId)
+        $offers = Offer::where('company_id', $this->companyId)
             ->where('id_offer_status', $pendienteId)
             ->whereNotNull('kanboard_task')
             ->select('id', 'kanboard_task', 'importe_licitacion')
             ->get();
 
         // Mapeo columnas Kanboard de la empresa
-        $columns = \App\Models\CompanyKanboardColumn::where('id_company', $this->companyId)
+        $columns = \App\Models\CompanyKanboardColumn::where('company_id', $this->companyId)
             ->pluck('name', 'kanboard_column_id')
             ->toArray();
 
@@ -59,7 +59,7 @@ class KpiService
         }
 
         // Ofertas pendientes SIN kanboard_task
-        $sinKanboard = Offer::where('id_company', $this->companyId)
+        $sinKanboard = Offer::where('company_id', $this->companyId)
             ->where('id_offer_status', $pendienteId)
             ->where(function ($q) { $q->whereNull('kanboard_task')->orWhere('kanboard_task', ''); })
             ->select('id', 'importe_licitacion')
@@ -103,9 +103,9 @@ class KpiService
         $year = Carbon::now()->year;
         $last12 = Carbon::now()->subMonths(12)->startOfMonth();
 
-        $ganadoId = OfferStatus::where('id_company', $this->companyId)->where('status', 'Ganado')->value('id');
-        $perdidoId = OfferStatus::where('id_company', $this->companyId)->where('status', 'Perdido')->value('id');
-        $pendienteId = OfferStatus::where('id_company', $this->companyId)->where('is_default_filter', true)->value('id');
+        $ganadoId = OfferStatus::where('company_id', $this->companyId)->where('status', 'Ganado')->value('id');
+        $perdidoId = OfferStatus::where('company_id', $this->companyId)->where('status', 'Perdido')->value('id');
+        $pendienteId = OfferStatus::where('company_id', $this->companyId)->where('is_default_filter', true)->value('id');
 
         $calc = function ($query) use ($ganadoId, $perdidoId, $pendienteId) {
             $base = clone $query;
@@ -138,7 +138,7 @@ class KpiService
             ];
         };
 
-        $base = Offer::where('id_company', $this->companyId)->whereNotNull('fecha_presentacion');
+        $base = Offer::where('company_id', $this->companyId)->whereNotNull('fecha_presentacion');
 
         return [
             'year' => $year,
@@ -151,7 +151,7 @@ class KpiService
     public function leads(): array
     {
         // Statuses con id y color
-        $statuses = InfonaliaStatus::where('id_company', $this->companyId)
+        $statuses = InfonaliaStatus::where('company_id', $this->companyId)
             ->get(['id', 'status', 'color'])
             ->keyBy('id');
 
@@ -169,7 +169,7 @@ class KpiService
 
         // Query agrupada
         $raw = \Illuminate\Support\Facades\DB::table('infonalia_data')
-            ->where('id_company', $this->companyId)
+            ->where('company_id', $this->companyId)
             ->whereNotNull('fecha_ingreso')
             ->whereNotNull('id_decision')
             ->selectRaw('YEAR(fecha_ingreso) as yr, QUARTER(fecha_ingreso) as qt, id_decision, COUNT(*) as cnt, COALESCE(SUM(presupuesto), 0) as importe')

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('clients', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_company')->constrained('companies')->cascadeOnDelete();
+            $table->foreignId('company_id')->index();
             $table->string('name');
             $table->string('cif', 20)->nullable();
             $table->string('sector')->nullable();
@@ -25,8 +25,8 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
 
-            $table->index('id_company');
-            $table->index(['id_company', 'name']);
+            $table->index('company_id');
+            $table->index(['company_id', 'name']);
         });
     }
 

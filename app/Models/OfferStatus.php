@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OfferStatus extends Model
 {
+    use BelongsToCompany;
     protected $fillable = [
-        'id_company',
+        'company_id',
         'status',
         'color',
         'is_default_filter',
@@ -25,6 +27,6 @@ class OfferStatus extends Model
 
     public function company(): BelongsTo
     {
-        return $this->belongsTo(Company::class, 'id_company');
+        return $this->belongsTo(Company::class, 'company_id');
     }
 }

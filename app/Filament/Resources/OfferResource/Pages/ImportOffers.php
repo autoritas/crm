@@ -15,7 +15,7 @@ class ImportOffers extends Page
 
     protected static ?string $title = 'Importar Ofertas';
 
-    /** Mapea nombre de BD legacy -> id_company destino */
+    /** Mapea nombre de BD legacy -> company_id destino */
     private const DATABASE_MAP = [
         'gestion'  => 1, // Autoritas
         'absolute' => 2, // Absolute

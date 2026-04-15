@@ -24,7 +24,7 @@ class OfferFlowController extends Controller
         $companyId = $request->integer('company_id', 0);
 
         // Statuses que generan oferta
-        $generatingIds = InfonaliaStatus::where('id_company', $companyId)
+        $generatingIds = InfonaliaStatus::where('company_id', $companyId)
             ->where('generates_offer', true)
             ->pluck('id');
 
@@ -32,10 +32,10 @@ class OfferFlowController extends Controller
             return response()->json(['data' => [], 'total' => 0]);
         }
 
-        $leads = InfonaliaData::where('id_company', $companyId)
+        $leads = InfonaliaData::where('company_id', $companyId)
             ->whereIn('id_decision', $generatingIds)
             ->whereDoesntHave('offer')
-            ->select('id', 'id_company', 'id_client', 'cliente', 'resumen_objeto', 'provincia', 'presupuesto', 'presentacion', 'url', 'perfil_contratante')
+            ->select('id', 'company_id', 'id_client', 'cliente', 'resumen_objeto', 'provincia', 'presupuesto', 'presentacion', 'url', 'perfil_contratante')
             ->get();
 
         return response()->json(['data' => $leads, 'total' => $leads->count()]);
@@ -63,17 +63,17 @@ class OfferFlowController extends Controller
         }
 
         // Status por defecto (Pendiente) para la nueva oferta
-        $defaultStatus = OfferStatus::where('id_company', $lead->id_company)
+        $defaultStatus = OfferStatus::where('company_id', $lead->company_id)
             ->where('is_default_filter', true)
             ->first();
 
         // Tipo licitación por defecto: Concurso
-        $defaultType = \App\Models\OfferType::where('id_company', $lead->id_company)
+        $defaultType = \App\Models\OfferType::where('company_id', $lead->company_id)
             ->where('name', 'Concurso')
             ->first();
 
         $offer = Offer::create([
-            'id_company' => $lead->id_company,
+            'company_id' => $lead->company_id,
             'id_infonalia_data' => $lead->id,
             'cliente' => $lead->cliente,
             'id_client' => $lead->id_client,
@@ -101,14 +101,14 @@ class OfferFlowController extends Controller
         }
 
         // Config Kanboard para la respuesta
-        $company = Company::with('kanboardColumns')->find($lead->id_company);
+        $company = Company::with('kanboardColumns')->find($lead->company_id);
         $prospectsColumn = $company?->kanboardColumns->firstWhere('name', 'PROSPECTS');
 
         return response()->json([
             'success' => true,
             'offer_id' => $offer->id,
             'codigo_proyecto' => $codigoProyecto,
-            'company_id' => $offer->id_company,
+            'company_id' => $offer->company_id,
             'cliente' => $offer->cliente,
             'objeto' => $offer->objeto,
             'url' => $lead->url,
@@ -160,7 +160,7 @@ class OfferFlowController extends Controller
         if ($request->has('offer_id')) {
             $offer = Offer::find($request->offer_id);
         } elseif ($request->has('kanboard_task_id') && $request->has('company_id')) {
-            $offer = Offer::where('id_company', $request->company_id)
+            $offer = Offer::where('company_id', $request->company_id)
                 ->where('kanboard_task', $request->kanboard_task_id)
                 ->first();
         }
@@ -169,7 +169,7 @@ class OfferFlowController extends Controller
             return response()->json(['error' => 'Offer not found'], 404);
         }
 
-        $discardStatus = OfferStatus::where('id_company', $offer->id_company)
+        $discardStatus = OfferStatus::where('company_id', $offer->company_id)
             ->where('is_default_discard', true)
             ->first();
 

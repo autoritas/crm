@@ -41,7 +41,7 @@ class OfferResource extends Resource
 
     protected static function getDefaultStatusId(): ?int
     {
-        return OfferStatus::where('id_company', static::getCompanyId())
+        return OfferStatus::where('company_id', static::getCompanyId())
             ->where('is_default_filter', true)
             ->value('id');
     }
@@ -52,7 +52,7 @@ class OfferResource extends Resource
 
         return $form
             ->schema([
-                Forms\Components\Hidden::make('id_company')->default($cid),
+                Forms\Components\Hidden::make('company_id')->default($cid),
 
                 Forms\Components\Tabs::make('Oferta')
                     ->tabs([
@@ -66,11 +66,11 @@ class OfferResource extends Resource
                                         ->label('Codigo proyecto')->maxLength(20),
                                     Forms\Components\Select::make('id_offer_status')
                                         ->label('Estado')
-                                        ->options(OfferStatus::where('id_company', $cid)->pluck('status', 'id'))
+                                        ->options(OfferStatus::where('company_id', $cid)->pluck('status', 'id'))
                                         ->default(static::getDefaultStatusId())->searchable(),
                                     Forms\Components\Select::make('id_workflow')
                                         ->label('Fase')
-                                        ->options(OfferWorkflow::where('id_company', $cid)->orderBy('sort_order')->pluck('name', 'id'))
+                                        ->options(OfferWorkflow::where('company_id', $cid)->orderBy('sort_order')->pluck('name', 'id'))
                                         ->searchable(),
                                 ]),
                                 Forms\Components\TextInput::make('proyecto')
@@ -82,7 +82,7 @@ class OfferResource extends Resource
                                         ->label('Cliente (texto)')->maxLength(512),
                                     Forms\Components\Select::make('id_client')
                                         ->label('Cliente normalizado')
-                                        ->relationship('client', 'name', fn ($query) => $query->where('id_company', $cid))
+                                        ->relationship('client', 'name', fn ($query) => $query->where('company_id', $cid))
                                         ->searchable()->preload(),
                                     Forms\Components\TextInput::make('provincia')
                                         ->label('Provincia')->maxLength(100),
@@ -93,15 +93,15 @@ class OfferResource extends Resource
                                         ->options(['Público' => 'Público', 'Privado' => 'Privado']),
                                     Forms\Components\Select::make('id_offer_type')
                                         ->label('Tipo licitacion')
-                                        ->options(OfferType::where('id_company', $cid)->pluck('name', 'id'))
+                                        ->options(OfferType::where('company_id', $cid)->pluck('name', 'id'))
                                         ->searchable(),
                                     Forms\Components\Select::make('id_business_line')
                                         ->label('Linea negocio')
-                                        ->options(OfferBusinessLine::where('id_company', $cid)->pluck('name', 'id'))
+                                        ->options(OfferBusinessLine::where('company_id', $cid)->pluck('name', 'id'))
                                         ->searchable(),
                                     Forms\Components\Select::make('id_client_activity')
                                         ->label('Actividad cliente')
-                                        ->options(OfferClientActivity::where('id_company', $cid)->pluck('name', 'id'))
+                                        ->options(OfferClientActivity::where('company_id', $cid)->pluck('name', 'id'))
                                         ->searchable(),
                                 ]),
                                 Forms\Components\Grid::make(4)->schema([
@@ -165,7 +165,7 @@ class OfferResource extends Resource
                                 ]),
                                 Forms\Components\Select::make('id_formula')
                                     ->label('Formula de valoracion')
-                                    ->options(OfferFormula::where('id_company', $cid)->pluck('name', 'id'))
+                                    ->options(OfferFormula::where('company_id', $cid)->pluck('name', 'id'))
                                     ->searchable(),
                             ]),
 
@@ -183,12 +183,12 @@ class OfferResource extends Resource
                                                 ->relationship(
                                                     'competitor',
                                                     'name',
-                                                    fn ($query) => $query->where('id_company', session('current_company_id', 1))
+                                                    fn ($query) => $query->where('company_id', session('current_company_id', 1))
                                                 )
                                                 ->searchable()
                                                 ->preload()
                                                 ->createOptionForm([
-                                                    Forms\Components\Hidden::make('id_company')
+                                                    Forms\Components\Hidden::make('company_id')
                                                         ->default(fn () => session('current_company_id', 1)),
                                                     Forms\Components\TextInput::make('name')
                                                         ->label('Nombre del competidor')
@@ -246,14 +246,14 @@ class OfferResource extends Resource
     {
         $cid = static::getCompanyId();
 
-        $statuses = OfferStatus::where('id_company', $cid)->get();
+        $statuses = OfferStatus::where('company_id', $cid)->get();
         $statusOptions = $statuses->pluck('status', 'id')->toArray();
         $statusColors = $statuses->pluck('color', 'id')->toArray();
-        $typeOptions = OfferType::where('id_company', $cid)->pluck('name', 'id')->toArray();
-        $workflowOptions = OfferWorkflow::where('id_company', $cid)->orderBy('sort_order')->pluck('name', 'id')->toArray();
+        $typeOptions = OfferType::where('company_id', $cid)->pluck('name', 'id')->toArray();
+        $workflowOptions = OfferWorkflow::where('company_id', $cid)->orderBy('sort_order')->pluck('name', 'id')->toArray();
 
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->where('id_company', $cid))
+            ->modifyQueryUsing(fn (Builder $query) => $query->where('company_id', $cid))
             ->defaultSort('fecha_presentacion', 'desc')
             ->defaultPaginationPageOption(100)
             ->paginationPageOptions([10, 25, 50, 100])
@@ -286,7 +286,7 @@ class OfferResource extends Resource
                     ->tooltip(fn ($record) => $record->objeto)->toggleable(),
                 Tables\Columns\SelectColumn::make('id_offer_type')
                     ->label('Tipo')
-                    ->options(OfferType::where('id_company', static::getCompanyId())->pluck('name', 'id')->toArray())
+                    ->options(OfferType::where('company_id', static::getCompanyId())->pluck('name', 'id')->toArray())
                     ->sortable()->toggleable(),
                 Tables\Columns\SelectColumn::make('sector')
                     ->label('Sector')
@@ -298,12 +298,16 @@ class OfferResource extends Resource
                     ->sortable()
                     ->toggleable()
                     ->extraAttributes(['style' => 'min-width:130px']),
-                Tables\Columns\TextInputColumn::make('importe_licitacion')
-                    ->label('Imp.Licit.')->type('number')
-                    ->rules(['nullable', 'numeric'])->sortable()->toggleable(),
-                Tables\Columns\TextInputColumn::make('importe_estimado')
-                    ->label('Imp.Est.')->type('number')
-                    ->rules(['nullable', 'numeric'])->sortable()->toggleable(),
+                Tables\Columns\TextColumn::make('importe_licitacion')
+                    ->label('Imp.Licit.')
+                    ->money('EUR', locale: 'es')
+                    ->alignEnd()
+                    ->sortable()->toggleable(),
+                Tables\Columns\TextColumn::make('importe_estimado')
+                    ->label('Imp.Est.')
+                    ->money('EUR', locale: 'es')
+                    ->alignEnd()
+                    ->sortable()->toggleable(),
                 Tables\Columns\SelectColumn::make('temperatura')
                     ->label('Temp.')
                     ->options(['' => '-', 'frio' => 'Frio', 'templado' => 'Templado', 'caliente' => 'Caliente'])

@@ -2,12 +2,16 @@
 
 namespace App\Filament\Resources\OpportunityResource\Pages;
 
+
+use App\Filament\Traits\PersistsColumnToggles;
 use App\Filament\Resources\OpportunityResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
 class ListOpportunities extends ListRecords
 {
+    use PersistsColumnToggles;
+
     protected static string $resource = OpportunityResource::class;
 
     protected function getHeaderActions(): array

@@ -58,7 +58,7 @@ class ImportOfferCompetitors extends Page
             }
 
             // Verificar que la oferta existe y es de la empresa
-            $offer = Offer::where('id', $offerId)->where('id_company', $companyId)->first();
+            $offer = Offer::where('id', $offerId)->where('company_id', $companyId)->first();
             if (!$offer) { $this->importErrors[] = "Fila {$row}: oferta {$offerId} no encontrada"; $this->skipped++; continue; }
 
             // Resolver competidor normalizado via aliases

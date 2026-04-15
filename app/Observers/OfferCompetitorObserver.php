@@ -23,7 +23,7 @@ class OfferCompetitorObserver
     {
         if (empty($record->competitor_nombre)) return;
 
-        $companyId = $record->offer?->id_company ?? (int) session('current_company_id', 1);
+        $companyId = $record->offer?->company_id ?? (int) session('current_company_id', 1);
         $competitorId = CompetitorAlias::resolveCompetitorId($companyId, $record->competitor_nombre);
 
         if ($competitorId) {

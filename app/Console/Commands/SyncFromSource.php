@@ -54,7 +54,7 @@ class SyncFromSource extends Command
     {
         $this->info('Syncing InfonaliaData...');
 
-        $statuses = InfonaliaStatus::where('id_company', $companyId)
+        $statuses = InfonaliaStatus::where('company_id', $companyId)
             ->pluck('id', 'status')
             ->mapWithKeys(fn ($id, $name) => [strtolower(trim($name)) => $id])
             ->toArray();
@@ -99,7 +99,7 @@ class SyncFromSource extends Command
             $decisionKey = $src->decision ? strtolower(trim($src->decision)) : null;
 
             $data = [
-                'id_company' => $companyId,
+                'company_id' => $companyId,
                 'id_decision' => $decisionKey ? ($statuses[$decisionKey] ?? $defaultDecisionId) : $defaultDecisionId,
                 'fecha_publicacion' => $src->fecha_publicacion,
                 'cliente' => $src->cliente,
@@ -128,7 +128,7 @@ class SyncFromSource extends Command
             }
 
             // Buscar si ya existe por cliente + objeto (evitar duplicados)
-            $existing = InfonaliaData::where('id_company', $companyId)
+            $existing = InfonaliaData::where('company_id', $companyId)
                 ->where('cliente', $src->cliente)
                 ->where('resumen_objeto', $src->resumen_objeto)
                 ->where('fecha_publicacion', $src->fecha_publicacion)
@@ -152,13 +152,13 @@ class SyncFromSource extends Command
     {
         $this->info('Syncing Ofertas...');
 
-        $statuses = OfferStatus::where('id_company', $companyId)
+        $statuses = OfferStatus::where('company_id', $companyId)
             ->pluck('id', 'status')
             ->mapWithKeys(fn ($id, $n) => [strtolower(trim($n)) => $id])->toArray();
-        $types = OfferType::where('id_company', $companyId)
+        $types = OfferType::where('company_id', $companyId)
             ->pluck('id', 'name')
             ->mapWithKeys(fn ($id, $n) => [strtolower(trim($n)) => $id])->toArray();
-        $formulas = OfferFormula::where('id_company', $companyId)
+        $formulas = OfferFormula::where('company_id', $companyId)
             ->pluck('id', 'name')
             ->mapWithKeys(fn ($id, $n) => [strtolower(trim($n)) => $id])->toArray();
         $defaultStatus = $statuses['pendiente'] ?? null;
@@ -183,7 +183,7 @@ class SyncFromSource extends Command
             $clientId = !empty($src->cliente) ? ClientAlias::resolveClientId($companyId, $src->cliente) : null;
 
             $data = [
-                'id_company' => $companyId,
+                'company_id' => $companyId,
                 'codigo_proyecto' => $src->codigo_proyecto,
                 'cliente' => $src->cliente,
                 'id_client' => $clientId,
@@ -208,7 +208,7 @@ class SyncFromSource extends Command
             // Buscar si ya existe por codigo_proyecto
             $existing = null;
             if ($src->codigo_proyecto) {
-                $existing = Offer::where('id_company', $companyId)
+                $existing = Offer::where('company_id', $companyId)
                     ->where('codigo_proyecto', $src->codigo_proyecto)
                     ->first();
             }

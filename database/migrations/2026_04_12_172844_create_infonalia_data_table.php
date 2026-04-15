@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('infonalia_data', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_company')->constrained('companies')->cascadeOnDelete();
+            $table->foreignId('company_id')->index();
 
             // Decision - referencia a infonalia_statuses
             $table->foreignId('id_decision')->nullable()->constrained('infonalia_statuses')->nullOnDelete();
@@ -36,8 +36,8 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->index('id_company');
-            $table->index(['id_company', 'id_decision']);
+            $table->index('company_id');
+            $table->index(['company_id', 'id_decision']);
         });
     }
 

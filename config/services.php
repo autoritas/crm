@@ -35,4 +35,14 @@ return [
         ],
     ],
 
+    // Stockflow Core: clave maestra compartida entre apps del ecosistema
+    // (se usa para cifrar/descifrar el secreto TOTP en stockflow_users.two_factor_secret)
+    'stockflow' => [
+        'app_key' => env('STOCKFLOW_APP_KEY'),
+        // ID del CRM en stockflow_applications. Distinto por entorno:
+        //   - desarrollo  (crm.klipea.com)    -> 11
+        //   - produccion  (crm.app-util.com)  -> 10
+        'app_id' => (int) env('STOCKFLOW_APP_ID', 10),
+    ],
+
 ];

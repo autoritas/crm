@@ -11,40 +11,40 @@ return new class extends Migration
         // Lineas de negocio por empresa
         Schema::create('offer_business_lines', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_company')->constrained('companies')->cascadeOnDelete();
+            $table->foreignId('company_id')->index();
             $table->string('name');
             $table->timestamps();
-            $table->unique(['id_company', 'name']);
+            $table->unique(['company_id', 'name']);
         });
 
         // Actividades del cliente por empresa
         Schema::create('offer_client_activities', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_company')->constrained('companies')->cascadeOnDelete();
+            $table->foreignId('company_id')->index();
             $table->string('name');
             $table->timestamps();
-            $table->unique(['id_company', 'name']);
+            $table->unique(['company_id', 'name']);
         });
 
         // Workflows por empresa
         Schema::create('offer_workflows', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_company')->constrained('companies')->cascadeOnDelete();
+            $table->foreignId('company_id')->index();
             $table->string('name');
             $table->string('color', 7)->default('#6b7280');
             $table->integer('sort_order')->default(0);
             $table->timestamps();
-            $table->unique(['id_company', 'name']);
+            $table->unique(['company_id', 'name']);
         });
 
         // Formulas de valoracion por empresa
         Schema::create('offer_formulas', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_company')->constrained('companies')->cascadeOnDelete();
+            $table->foreignId('company_id')->index();
             $table->string('name');
             $table->text('description')->nullable();
             $table->timestamps();
-            $table->unique(['id_company', 'name']);
+            $table->unique(['company_id', 'name']);
         });
     }
 

@@ -78,7 +78,17 @@
       "Bash(git push:*)",
       "Bash(ls /var/www/html/crm/*.sh)",
       "Bash(git -C /var/www/html/crm remote -v)",
-      "Bash(chmod +x /var/www/html/crm/push.sh)"
+      "Bash(chmod +x /var/www/html/crm/push.sh)",
+      "Bash(git rm:*)",
+      "Bash(git -C /var/www/html/crm status)",
+      "Bash(git -C /var/www/html/crm check-ignore -v .claude/settings.local.json)",
+      "Bash(xargs sed:*)",
+      "Bash(git mv:*)",
+      "Bash(composer require:*)",
+      "Bash(composer dump-autoload:*)",
+      "Bash(php -l app/Models/User.php app/Models/Company.php app/Models/StockflowAccess.php app/Http/Controllers/Auth/AuthController.php app/Http/Controllers/Auth/TwoFactorController.php app/Http/Middleware/EnsureUserAccess.php app/Http/Middleware/RequireRole.php app/Traits/BelongsToCompany.php app/Models/Scopes/CompanyScope.php bootstrap/app.php routes/web.php)",
+      "Bash(php -l app/Models/User.php app/Models/StockflowAccess.php app/Http/Controllers/Auth/AuthController.php app/Http/Middleware/EnsureUserAccess.php config/services.php)",
+      "Bash(php -l database/migrations/2026_04_15_000002_rename_id_company_to_company_id.php)"
     ]
   }
 }

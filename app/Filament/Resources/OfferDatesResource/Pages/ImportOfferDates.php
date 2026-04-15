@@ -54,7 +54,7 @@ class ImportOfferDates extends Page
 
             if (empty($offerId)) { $this->importErrors[] = "Fila {$row}: sin oferta_id"; $this->skipped++; continue; }
 
-            $offer = Offer::where('id', $offerId)->where('id_company', $companyId)->first();
+            $offer = Offer::where('id', $offerId)->where('company_id', $companyId)->first();
             if (!$offer) { $this->importErrors[] = "Fila {$row}: oferta {$offerId} no encontrada"; $this->skipped++; continue; }
 
             $data = [];

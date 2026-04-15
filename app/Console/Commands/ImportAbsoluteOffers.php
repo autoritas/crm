@@ -27,27 +27,27 @@ class ImportAbsoluteOffers extends Command
     {
         $this->info('Loading lookups...');
 
-        $statuses = OfferStatus::where('id_company', $this->companyId)
+        $statuses = OfferStatus::where('company_id', $this->companyId)
             ->pluck('id', 'status')
             ->mapWithKeys(fn ($id, $n) => [strtolower(trim($n)) => $id])->toArray();
 
-        $types = OfferType::where('id_company', $this->companyId)
+        $types = OfferType::where('company_id', $this->companyId)
             ->pluck('id', 'name')
             ->mapWithKeys(fn ($id, $n) => [strtolower(trim($n)) => $id])->toArray();
 
-        $businessLines = OfferBusinessLine::where('id_company', $this->companyId)
+        $businessLines = OfferBusinessLine::where('company_id', $this->companyId)
             ->pluck('id', 'name')
             ->mapWithKeys(fn ($id, $n) => [strtolower(trim($n)) => $id])->toArray();
 
-        $activities = OfferClientActivity::where('id_company', $this->companyId)
+        $activities = OfferClientActivity::where('company_id', $this->companyId)
             ->pluck('id', 'name')
             ->mapWithKeys(fn ($id, $n) => [strtolower(trim($n)) => $id])->toArray();
 
-        $workflows = OfferWorkflow::where('id_company', $this->companyId)
+        $workflows = OfferWorkflow::where('company_id', $this->companyId)
             ->pluck('id', 'name')
             ->mapWithKeys(fn ($id, $n) => [strtolower(trim($n)) => $id])->toArray();
 
-        $formulas = OfferFormula::where('id_company', $this->companyId)
+        $formulas = OfferFormula::where('company_id', $this->companyId)
             ->pluck('id', 'name')
             ->mapWithKeys(fn ($id, $n) => [strtolower(trim($n)) => $id])->toArray();
 
@@ -78,7 +78,7 @@ class ImportAbsoluteOffers extends Command
             }
 
             $offer = Offer::create([
-                'id_company' => $this->companyId,
+                'company_id' => $this->companyId,
                 'codigo_proyecto' => $src->codigo_proyecto,
                 'cliente' => $src->cliente,
                 'id_client' => $clientId,

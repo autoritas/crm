@@ -25,7 +25,7 @@ class ApiCredentialResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Select::make('id_company')
+            Forms\Components\Select::make('company_id')
                 ->label('Empresa')
                 ->relationship('company', 'name')
                 ->placeholder('Global (todas las empresas)')

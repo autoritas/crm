@@ -2,12 +2,16 @@
 
 namespace App\Filament\Resources\InfonaliaStatusResource\Pages;
 
+
+use App\Filament\Traits\PersistsColumnToggles;
 use App\Filament\Resources\InfonaliaStatusResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
 class ListInfonaliaStatuses extends ListRecords
 {
+    use PersistsColumnToggles;
+
     protected static string $resource = InfonaliaStatusResource::class;
 
     protected function getHeaderActions(): array

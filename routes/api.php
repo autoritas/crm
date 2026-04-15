@@ -16,7 +16,7 @@ Route::middleware('api.key')->group(function () {
             'service' => $cred->service,
             'api_key' => $cred->api_key,
             'base_url' => $cred->base_url,
-            'company_id' => $cred->id_company,
+            'company_id' => $cred->company_id,
         ]);
     });
 
@@ -50,10 +50,10 @@ Route::middleware('api.key')->prefix('flow')->group(function () {
     Route::get('go-nogo-pending', function (\Illuminate\Http\Request $request) {
         $companyId = $request->integer('company_id', 0);
 
-        $prospectsColId = \App\Models\CompanyKanboardColumn::where('id_company', $companyId)
+        $prospectsColId = \App\Models\CompanyKanboardColumn::where('company_id', $companyId)
             ->where('name', 'PROSPECTS')->value('kanboard_column_id');
 
-        $offers = \App\Models\Offer::where('id_company', $companyId)
+        $offers = \App\Models\Offer::where('company_id', $companyId)
             ->where('go_nogo', 'PENDIENTE')
             ->whereNull('ia_go_nogo')
             ->whereNotNull('kanboard_task')

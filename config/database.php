@@ -62,6 +62,26 @@ return [
             ]) : [],
         ],
 
+        // Conexion a Stockflow Core (usuarios, roles, accesos, companias)
+        'autoritas_production' => [
+            'driver' => 'mysql',
+            'host' => env('DB_CORE_HOST', '127.0.0.1'),
+            'port' => env('DB_CORE_PORT', '3306'),
+            'database' => env('DB_CORE_DATABASE', 'core'),
+            'username' => env('DB_CORE_USERNAME', 'root'),
+            'password' => env('DB_CORE_PASSWORD', ''),
+            'unix_socket' => env('DB_SOCKET', ''),
+            'charset' => env('DB_CHARSET', 'utf8mb4'),
+            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
         'kanboard' => [
             'driver' => 'mysql',
             'host' => env('DB_KANBOARD_HOST', '127.0.0.1'),

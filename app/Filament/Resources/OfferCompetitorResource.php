@@ -38,14 +38,14 @@ class OfferCompetitorResource extends Resource
         return $form->schema([
             Forms\Components\Select::make('id_offer')
                 ->label('Oferta')
-                ->relationship('offer', 'codigo_proyecto', fn ($query) => $query->where('id_company', $cid))
+                ->relationship('offer', 'codigo_proyecto', fn ($query) => $query->where('company_id', $cid))
                 ->searchable()->preload()->required(),
             Forms\Components\Select::make('id_competitor')
                 ->label('Competidor')
-                ->relationship('competitor', 'name', fn ($query) => $query->where('id_company', $cid))
+                ->relationship('competitor', 'name', fn ($query) => $query->where('company_id', $cid))
                 ->searchable()->preload()
                 ->createOptionForm([
-                    Forms\Components\Hidden::make('id_company')->default(fn () => session('current_company_id', 1)),
+                    Forms\Components\Hidden::make('company_id')->default(fn () => session('current_company_id', 1)),
                     Forms\Components\TextInput::make('name')->label('Nombre')->required(),
                     Forms\Components\TextInput::make('cif')->label('CIF')->maxLength(20),
                 ])
@@ -66,13 +66,13 @@ class OfferCompetitorResource extends Resource
     public static function table(Table $table): Table
     {
         $cid = static::getCompanyId();
-        $statusOptions = OfferStatus::where('id_company', $cid)->pluck('status', 'id')->toArray();
-        $typeOptions = OfferType::where('id_company', $cid)->pluck('name', 'id')->toArray();
-        $workflowOptions = OfferWorkflow::where('id_company', $cid)->orderBy('sort_order')->pluck('name', 'id')->toArray();
-        $defaultStatusId = OfferStatus::where('id_company', $cid)->where('is_default_filter', true)->value('id');
+        $statusOptions = OfferStatus::where('company_id', $cid)->pluck('status', 'id')->toArray();
+        $typeOptions = OfferType::where('company_id', $cid)->pluck('name', 'id')->toArray();
+        $workflowOptions = OfferWorkflow::where('company_id', $cid)->orderBy('sort_order')->pluck('name', 'id')->toArray();
+        $defaultStatusId = OfferStatus::where('company_id', $cid)->where('is_default_filter', true)->value('id');
 
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->whereHas('offer', fn ($q) => $q->where('id_company', $cid)))
+            ->modifyQueryUsing(fn (Builder $query) => $query->whereHas('offer', fn ($q) => $q->where('company_id', $cid)))
             ->defaultSort('id_offer', 'desc')
             ->defaultPaginationPageOption(100)
             ->paginationPageOptions([25, 50, 100])

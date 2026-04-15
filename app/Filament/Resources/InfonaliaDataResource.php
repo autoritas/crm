@@ -37,7 +37,7 @@ class InfonaliaDataResource extends Resource
     {
         $companyId = static::getCompanyId();
 
-        return InfonaliaStatus::where('id_company', $companyId)
+        return InfonaliaStatus::where('company_id', $companyId)
             ->where('is_default_filter', true)
             ->value('id');
     }
@@ -48,7 +48,7 @@ class InfonaliaDataResource extends Resource
 
         return $form
             ->schema([
-                Forms\Components\Hidden::make('id_company')
+                Forms\Components\Hidden::make('company_id')
                     ->default($companyId),
 
                 Forms\Components\Section::make('Datos principales')
@@ -56,7 +56,7 @@ class InfonaliaDataResource extends Resource
                         Forms\Components\Select::make('id_decision')
                             ->label('Decision')
                             ->options(
-                                InfonaliaStatus::where('id_company', $companyId)
+                                InfonaliaStatus::where('company_id', $companyId)
                                     ->pluck('status', 'id')
                             )
                             ->default(static::getDefaultDecisionId())
@@ -72,12 +72,12 @@ class InfonaliaDataResource extends Resource
                             ->relationship(
                                 'client',
                                 'name',
-                                fn ($query) => $query->where('id_company', session('current_company_id', 1))
+                                fn ($query) => $query->where('company_id', session('current_company_id', 1))
                             )
                             ->searchable()
                             ->preload()
                             ->createOptionForm([
-                                Forms\Components\Hidden::make('id_company')
+                                Forms\Components\Hidden::make('company_id')
                                     ->default(fn () => session('current_company_id', 1)),
                                 Forms\Components\TextInput::make('name')
                                     ->label('Nombre')
@@ -120,7 +120,7 @@ class InfonaliaDataResource extends Resource
                         Forms\Components\Select::make('id_ia_decision')
                             ->label('Decision IA')
                             ->options(
-                                InfonaliaStatus::where('id_company', $companyId)
+                                InfonaliaStatus::where('company_id', $companyId)
                                     ->pluck('status', 'id')
                             )
                             ->searchable(),
@@ -141,12 +141,12 @@ class InfonaliaDataResource extends Resource
     {
         $companyId = static::getCompanyId();
 
-        $statuses = InfonaliaStatus::where('id_company', $companyId)->get();
+        $statuses = InfonaliaStatus::where('company_id', $companyId)->get();
         $statusOptions = $statuses->pluck('status', 'id')->toArray();
         $statusColors = $statuses->pluck('color', 'id')->toArray();
 
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->where('id_company', $companyId))
+            ->modifyQueryUsing(fn (Builder $query) => $query->where('company_id', $companyId))
             ->defaultSort('created_at', 'desc')
             ->defaultPaginationPageOption(100)
             ->paginationPageOptions([10, 25, 50, 100])

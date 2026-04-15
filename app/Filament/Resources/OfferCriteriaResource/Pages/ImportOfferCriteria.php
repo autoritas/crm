@@ -39,7 +39,7 @@ class ImportOfferCriteria extends Page
         $handle = fopen($this->csv_file->getRealPath(), 'r');
         $header = array_map(fn ($h) => strtolower(trim(preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $h))), fgetcsv($handle, 0, $this->delimiter));
 
-        $formulas = OfferFormula::where('id_company', $companyId)
+        $formulas = OfferFormula::where('company_id', $companyId)
             ->pluck('id', 'name')
             ->mapWithKeys(fn ($id, $name) => [strtolower(trim($name)) => $id])
             ->toArray();
@@ -54,7 +54,7 @@ class ImportOfferCriteria extends Page
             $offerId = trim($csvRow['oferta_id'] ?? $csvRow['id'] ?? '');
             if (empty($offerId)) { $this->importErrors[] = "Fila {$row}: sin oferta_id"; $this->skipped++; continue; }
 
-            $offer = Offer::where('id', $offerId)->where('id_company', $companyId)->first();
+            $offer = Offer::where('id', $offerId)->where('company_id', $companyId)->first();
             if (!$offer) { $this->importErrors[] = "Fila {$row}: oferta {$offerId} no encontrada"; $this->skipped++; continue; }
 
             $data = [];

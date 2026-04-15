@@ -2,16 +2,18 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CompetitorAlias extends Model
 {
-    protected $fillable = ['id_company', 'raw_name', 'id_competitor'];
+    use BelongsToCompany;
+    protected $fillable = ['company_id', 'raw_name', 'id_competitor'];
 
     public function company(): BelongsTo
     {
-        return $this->belongsTo(Company::class, 'id_company');
+        return $this->belongsTo(Company::class, 'company_id');
     }
 
     public function competitor(): BelongsTo
@@ -25,7 +27,7 @@ class CompetitorAlias extends Model
         if (empty($normalized)) return null;
 
         $alias = self::firstOrCreate(
-            ['id_company' => $companyId, 'raw_name' => $normalized]
+            ['company_id' => $companyId, 'raw_name' => $normalized]
         );
 
         return $alias->id_competitor;

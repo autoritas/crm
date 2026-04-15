@@ -26,7 +26,7 @@ class CompetitorCatalogResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Select::make('id_company')
+            Forms\Components\Select::make('company_id')
                 ->label('Empresa')
                 ->relationship('company', 'name')
                 ->default(fn () => session('current_company_id', 1))
@@ -49,7 +49,7 @@ class CompetitorCatalogResource extends Resource
         $cid = (int) session('current_company_id', 1);
 
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->where('id_company', $cid))
+            ->modifyQueryUsing(fn (Builder $query) => $query->where('company_id', $cid))
             ->defaultSort('name')
             ->defaultPaginationPageOption(100)
             ->paginationPageOptions([25, 50, 100])

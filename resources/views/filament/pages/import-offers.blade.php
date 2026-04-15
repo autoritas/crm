@@ -20,7 +20,7 @@
                     Se sincronizarán oportunidades (<code>InfonaliaData</code>) y ofertas
                     (<code>cial_ofertas</code> + detalles + fechas) desde la BD indicada
                     hacia la empresa destino. El proceso es idempotente:
-                    los registros ya importados se actualizan por <code>(id_company, legacy_id)</code>.
+                    los registros ya importados se actualizan por <code>(company_id, legacy_id)</code>.
                 </p>
             </div>
         </div>

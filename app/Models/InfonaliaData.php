@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToCompany;
 use App\Observers\InfonaliaDataObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,12 +12,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[ObservedBy(InfonaliaDataObserver::class)]
 class InfonaliaData extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToCompany;
 
     protected $table = 'infonalia_data';
 
     protected $fillable = [
-        'id_company',
+        'company_id',
         'id_decision',
         'id_client',
         'fecha_publicacion',
@@ -53,7 +54,7 @@ class InfonaliaData extends Model
 
     public function company(): BelongsTo
     {
-        return $this->belongsTo(Company::class, 'id_company');
+        return $this->belongsTo(Company::class, 'company_id');
     }
 
     public function decision(): BelongsTo
