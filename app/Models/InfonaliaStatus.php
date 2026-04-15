@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class InfonaliaStatus extends Model
 {
+    protected $connection = 'mysql';
+
     use HasFactory, BelongsToCompany;
 
     protected $fillable = [

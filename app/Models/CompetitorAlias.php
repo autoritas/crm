@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CompetitorAlias extends Model
 {
+    protected $connection = 'mysql';
+
     use BelongsToCompany;
     protected $fillable = ['company_id', 'raw_name', 'id_competitor'];
 

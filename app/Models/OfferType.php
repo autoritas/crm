@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OfferType extends Model
 {
+    protected $connection = 'mysql';
+
     use BelongsToCompany;
     protected $fillable = [
         'company_id',

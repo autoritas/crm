@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Competitor extends Model
 {
+    protected $connection = 'mysql';
+
     use BelongsToCompany;
     protected $fillable = ['company_id', 'name', 'cif', 'notes'];
 

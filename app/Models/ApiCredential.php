@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ApiCredential extends Model
 {
+    protected $connection = 'mysql';
+
     use BelongsToCompany;
     protected $fillable = [
         'company_id', 'service', 'label', 'base_url', 'api_key', 'folder', 'extra', 'is_active',

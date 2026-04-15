@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[ObservedBy(InfonaliaDataObserver::class)]
 class InfonaliaData extends Model
 {
+    protected $connection = 'mysql';
+
     use HasFactory, BelongsToCompany;
 
     protected $table = 'infonalia_data';

@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class UserTablePreference extends Model
 {
+    protected $connection = 'mysql';
+
     protected $fillable = ['user_id', 'table_key', 'toggled_columns'];
 
     protected function casts(): array

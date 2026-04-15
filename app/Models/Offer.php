@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Offer extends Model
 {
+    protected $connection = 'mysql';
+
     use HasFactory, BelongsToCompany;
 
     protected $fillable = [

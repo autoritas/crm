@@ -12,4 +12,9 @@ class ListClientAliases extends ListRecords
     use PersistsColumnToggles;
 
     protected static string $resource = ClientAliasResource::class;
+
+    public function getTitle(): string
+    {
+        return 'Sinonimos de clientes';
+    }
 }

@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[ObservedBy(OfferCompetitorObserver::class)]
 class OfferCompetitor extends Model
 {
+    protected $connection = 'mysql';
+
     protected $fillable = [
         'id_offer', 'competitor_nombre', 'id_competitor',
         'admision', 'razon_exclusion',

@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CompanyKanboardColumn extends Model
 {
+    protected $connection = 'mysql';
+
     use BelongsToCompany;
     protected $fillable = ['company_id', 'kanboard_column_id', 'name', 'position', 'description'];
 

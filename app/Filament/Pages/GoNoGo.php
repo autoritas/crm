@@ -81,10 +81,13 @@ class GoNoGo extends Page
         $offer = Offer::findOrFail($offerId);
         $offer->update(['go_nogo' => 'GO']);
 
-        // Mover a columna OFERTAR en Kanboard
-        $this->moveKanboardTask($offer, 'OFERTAR');
+        $error = $this->moveKanboardTask($offer, 'OFERTAR');
 
-        Notification::make()->title('GO — Movido a OFERTAR en Kanboard')->success()->send();
+        if ($error) {
+            Notification::make()->title('GO guardado, pero Kanboard falló')->body($error)->danger()->send();
+        } else {
+            Notification::make()->title('GO — Movido a OFERTAR en Kanboard')->success()->send();
+        }
     }
 
     public function decideGoTactico(int $offerId): void
@@ -92,9 +95,13 @@ class GoNoGo extends Page
         $offer = Offer::findOrFail($offerId);
         $offer->update(['go_nogo' => 'GO_TACTICO']);
 
-        $this->moveKanboardTask($offer, 'OFERTAR');
+        $error = $this->moveKanboardTask($offer, 'OFERTAR');
 
-        Notification::make()->title('GO TÁCTICO — Movido a OFERTAR en Kanboard')->success()->send();
+        if ($error) {
+            Notification::make()->title('GO TÁCTICO guardado, pero Kanboard falló')->body($error)->danger()->send();
+        } else {
+            Notification::make()->title('GO TÁCTICO — Movido a OFERTAR en Kanboard')->success()->send();
+        }
     }
 
     public function decideNoGo(int $offerId): void
@@ -116,30 +123,81 @@ class GoNoGo extends Page
         Notification::make()->title('NO GO — Oferta descartada, tarea cerrada en Kanboard')->danger()->send();
     }
 
-    private function moveKanboardTask(Offer $offer, string $columnName): void
+    /**
+     * Mueve la tarea de Kanboard a la columna indicada.
+     * Devuelve null si OK, o un mensaje de error si falla (para notificar).
+     */
+    private function moveKanboardTask(Offer $offer, string $columnName): ?string
     {
-        if (!$offer->kanboard_task) return;
+        if (!$offer->kanboard_task) {
+            return 'La oferta no tiene tarea asociada en Kanboard.';
+        }
 
         $company = Company::with('kanboardColumns')->find($offer->company_id);
-        $column = $company?->kanboardColumns->firstWhere('name', $columnName);
-        if (!$column) return;
+        if (!$company) return 'Empresa no encontrada.';
+
+        $column = $company->kanboardColumns->firstWhere('name', $columnName);
+        if (!$column) return "No existe la columna '{$columnName}' configurada para la empresa.";
+
+        $taskId = (int) $offer->kanboard_task;
+        $endpoint = 'https://kanboard.cosmos-intelligence.com/jsonrpc.php';
+        $auth = ['jsonrpc', '9f80c6b25b7aa27c3ecca472ff61dade28a2c1c750f301e10bec4580596c'];
 
         try {
-            Http::withBasicAuth('jsonrpc', '9f80c6b25b7aa27c3ecca472ff61dade28a2c1c750f301e10bec4580596c')
-                ->post('https://kanboard.cosmos-intelligence.com/jsonrpc.php', [
-                    'jsonrpc' => '2.0',
-                    'method' => 'moveTaskPosition',
-                    'id' => 1,
-                    'params' => [
-                        'project_id' => $company->kanboard_project_id,
-                        'task_id' => (int) $offer->kanboard_task,
-                        'column_id' => $column->kanboard_column_id,
-                        'position' => 1,
-                        'swimlane_id' => 0,
-                    ],
+            // 1) Obtener la tarea para resolver project_id / swimlane_id reales.
+            $taskResp = Http::withBasicAuth(...$auth)->post($endpoint, [
+                'jsonrpc' => '2.0',
+                'method' => 'getTask',
+                'id' => 1,
+                'params' => ['task_id' => $taskId],
+            ]);
+
+            $task = $taskResp->json('result');
+            if (!$task) {
+                $err = $taskResp->json('error.message') ?? 'Respuesta vacía';
+                Log::error('Kanboard getTask failed', ['task_id' => $taskId, 'error' => $err, 'body' => $taskResp->body()]);
+                return "Kanboard no devolvió la tarea {$taskId}: {$err}";
+            }
+
+            $projectId = (int) ($task['project_id'] ?? $company->kanboard_project_id ?? 0);
+            $swimlaneId = (int) ($task['swimlane_id'] ?? 1);
+
+            if (!$projectId) {
+                return 'No se pudo determinar el project_id de Kanboard.';
+            }
+
+            // 2) Mover.
+            $moveResp = Http::withBasicAuth(...$auth)->post($endpoint, [
+                'jsonrpc' => '2.0',
+                'method' => 'moveTaskPosition',
+                'id' => 2,
+                'params' => [
+                    'project_id' => $projectId,
+                    'task_id' => $taskId,
+                    'column_id' => (int) $column->kanboard_column_id,
+                    'position' => 1,
+                    'swimlane_id' => $swimlaneId ?: 1,
+                ],
+            ]);
+
+            $result = $moveResp->json('result');
+            if ($result !== true) {
+                $err = $moveResp->json('error.message') ?? 'Kanboard devolvió false';
+                Log::error('Kanboard moveTaskPosition failed', [
+                    'task_id' => $taskId,
+                    'project_id' => $projectId,
+                    'column_id' => $column->kanboard_column_id,
+                    'swimlane_id' => $swimlaneId,
+                    'error' => $err,
+                    'body' => $moveResp->body(),
                 ]);
-        } catch (\Exception $e) {
-            Log::error('Kanboard moveTask failed: ' . $e->getMessage());
+                return "Kanboard rechazó el movimiento: {$err}";
+            }
+
+            return null;
+        } catch (\Throwable $e) {
+            Log::error('Kanboard moveTask exception: ' . $e->getMessage());
+            return 'Excepción al llamar a Kanboard: ' . $e->getMessage();
         }
     }
 

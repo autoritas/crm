@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OfferCompetitorScore extends Model
 {
+    protected $connection = 'mysql';
+
     protected $fillable = [
         'id_offer_competitor', 'tecnico', 'economico',
         'objetivo_real', 'objetivo_fake', 'precio',

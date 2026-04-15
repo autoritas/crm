@@ -90,6 +90,40 @@ class ClientAliasResource extends Resource
                     ->sortable()
                     ->limit(50)
                     ->tooltip(fn ($record) => $record->raw_name),
+                Tables\Columns\IconColumn::make('crear_flecha')
+                    ->label('')
+                    ->icon(fn ($record) => empty($record->id_client) ? 'heroicon-o-arrow-right-circle' : null)
+                    ->color('success')
+                    ->size(Tables\Columns\IconColumn\IconColumnSize::ExtraLarge)
+                    ->tooltip(fn ($record) => empty($record->id_client) ? 'Crear cliente y vincular' : null)
+                    ->action(
+                        Tables\Actions\Action::make('crear_y_vincular_col')
+                            ->requiresConfirmation()
+                            ->modalHeading('Crear cliente y vincular sinonimo')
+                            ->modalDescription(fn ($record) => 'Se creara el cliente "' . $record->raw_name . '" y se vinculara a este sinonimo.')
+                            ->action(function ($record): void {
+                                if (! empty($record->id_client)) {
+                                    return;
+                                }
+
+                                $client = Client::create([
+                                    'company_id' => $record->company_id,
+                                    'name' => $record->raw_name,
+                                ]);
+
+                                $record->update(['id_client' => $client->id]);
+
+                                \App\Models\InfonaliaData::where('company_id', $record->company_id)
+                                    ->where('cliente', $record->raw_name)
+                                    ->update(['id_client' => $client->id]);
+
+                                \Filament\Notifications\Notification::make()
+                                    ->success()
+                                    ->title('Cliente creado y vinculado')
+                                    ->body('Se ha creado el cliente "' . $client->name . '" y vinculado al sinonimo.')
+                                    ->send();
+                            })
+                    ),
                 Tables\Columns\SelectColumn::make('id_client')
                     ->label('Cliente normalizado')
                     ->options(fn () =>
