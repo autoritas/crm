@@ -3,13 +3,13 @@
 # push.sh — Sube la versión actual del CRM a GitHub (autoritas/crm).
 #
 # Uso:
-#   ./push.sh                       # commitea cambios YA staged + push a la rama actual
+#   ./push.sh                       # stagea TODO lo modificado (excluye sensibles) + commit + push
 #   ./push.sh "mensaje del commit"  # idem con mensaje personalizado
 #   ./push.sh -b develop "msg"      # push a la rama indicada
-#   ./push.sh --all "msg"           # añade todos los cambios (git add -A) ANTES del escaneo
+#   ./push.sh --staged-only "msg"   # solo lo que YA este staged (no hace git add)
 #
-# Por diseño NO ejecuta 'git add -A' salvo que pases --all, para no arrastrar
-# ficheros sensibles (.claude/settings.local.json, dumps, .env*, etc.).
+# Por defecto hace 'git add -A' EXCLUYENDO patrones sensibles
+# (.claude/settings.local.json, .env*, *.pem, *.key, auth.json, id_rsa*, dumps SQL).
 #
 set -euo pipefail
 
@@ -21,13 +21,14 @@ REMOTE_URL="https://github.com/autoritas/crm.git"
 # ---- Parseo de argumentos ---------------------------------------------------
 BRANCH=""
 MESSAGE=""
-ADD_ALL=0
+ADD_ALL=1  # Default: stagea todo excluyendo sensibles.
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        -b|--branch) BRANCH="$2"; shift 2 ;;
-        --all)       ADD_ALL=1; shift ;;
-        -h|--help)   sed -n '2,14p' "$0"; exit 0 ;;
-        *)           MESSAGE="$1"; shift ;;
+        -b|--branch)    BRANCH="$2"; shift 2 ;;
+        --all)          ADD_ALL=1; shift ;;          # retro-compatibilidad
+        --staged-only)  ADD_ALL=0; shift ;;
+        -h|--help)      sed -n '2,14p' "$0"; exit 0 ;;
+        *)              MESSAGE="$1"; shift ;;
     esac
 done
 
@@ -44,15 +45,19 @@ TARGET_BRANCH="${BRANCH:-${CURRENT_BRANCH:-$DEFAULT_BRANCH}}"
 [[ "$CURRENT_BRANCH" == "$TARGET_BRANCH" ]] || git checkout "$TARGET_BRANCH"
 
 # ---- Staging ----------------------------------------------------------------
+# 'git add -A' ya respeta .gitignore. Los patrones sensibles que no esten
+# en .gitignore quedan cubiertos por el Guardarrail 1 que aborta si se
+# cuela algo prohibido.
 if [[ "$ADD_ALL" -eq 1 ]]; then
-    echo ">> git add -A (solicitado con --all)"
+    echo ">> git add -A (respetando .gitignore; usa --staged-only para desactivar)"
     git add -A
 fi
 
 # ---- Listado de ficheros staged --------------------------------------------
-STAGED="$(git diff --cached --name-only)"
+# Solo analizamos ADDS/MODIFS (A/M/R/C). Los borrados (D) no son un riesgo.
+STAGED="$(git diff --cached --name-only --diff-filter=AMRC)"
 if [[ -z "$STAGED" ]]; then
-    echo ">> No hay cambios staged. Haz 'git add <archivos>' o usa --all."
+    echo ">> No hay ADDS/MODIFS staged. (Los borrados se permiten.)"
     # Pero aún permitimos push si hay commits locales sin subir.
 fi
 
@@ -102,8 +107,9 @@ if [[ "$HIT" -eq 1 ]]; then
     exit 3
 fi
 
-# ---- Commit (si hay algo staged) -------------------------------------------
-if [[ -n "$STAGED" ]]; then
+# ---- Commit (si hay algo staged, incluyendo borrados) ----------------------
+ANY_STAGED="$(git diff --cached --name-only)"
+if [[ -n "$ANY_STAGED" ]]; then
     COMMIT_MSG="${MESSAGE:-chore: actualización $(date '+%Y-%m-%d %H:%M:%S')}"
     echo ">> Commit: $COMMIT_MSG"
     git commit -m "$COMMIT_MSG"

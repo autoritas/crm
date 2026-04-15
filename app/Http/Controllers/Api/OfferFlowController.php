@@ -101,7 +101,7 @@ class OfferFlowController extends Controller
         }
 
         // Config Kanboard para la respuesta
-        $company = Company::with('kanboardColumns')->find($lead->company_id);
+        $company = Company::with(['settings', 'kanboardColumns'])->find($lead->company_id);
         $prospectsColumn = $company?->kanboardColumns->firstWhere('name', 'PROSPECTS');
 
         return response()->json([
@@ -114,10 +114,10 @@ class OfferFlowController extends Controller
             'url' => $lead->url,
             'fecha_presentacion' => $lead->presentacion?->format('Y-m-d') ?? null,
             'kanboard' => [
-                'project_id' => $company?->kanboard_project_id,
+                'project_id' => $company?->settings?->kanboard_project_id,
                 'prospects_column_id' => $prospectsColumn?->kanboard_column_id,
-                'category_id' => $company?->kanboard_default_category_id,
-                'owner_id' => $company?->kanboard_default_owner_id,
+                'category_id' => $company?->settings?->kanboard_default_category_id,
+                'owner_id' => $company?->settings?->kanboard_default_owner_id,
             ],
         ]);
     }
@@ -129,16 +129,16 @@ class OfferFlowController extends Controller
     public function kanboardConfig(Request $request): JsonResponse
     {
         $companyId = $request->integer('company_id', 0);
-        $company = Company::with('kanboardColumns')->find($companyId);
+        $company = Company::with(['settings', 'kanboardColumns'])->find($companyId);
 
-        if (!$company || !$company->kanboard_project_id) {
+        if (!$company || !$company->settings?->kanboard_project_id) {
             return response()->json(['error' => 'No kanboard config'], 404);
         }
 
         $prospectsColumn = $company->kanboardColumns->firstWhere('name', 'PROSPECTS');
 
         return response()->json([
-            'project_id' => $company->kanboard_project_id,
+            'project_id' => $company->settings->kanboard_project_id,
             'prospects_column_id' => $prospectsColumn?->kanboard_column_id,
             'columns' => $company->kanboardColumns->map(fn ($c) => [
                 'kanboard_column_id' => $c->kanboard_column_id,

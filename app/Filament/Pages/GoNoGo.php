@@ -133,7 +133,7 @@ class GoNoGo extends Page
             return 'La oferta no tiene tarea asociada en Kanboard.';
         }
 
-        $company = Company::with('kanboardColumns')->find($offer->company_id);
+        $company = Company::with(['settings', 'kanboardColumns'])->find($offer->company_id);
         if (!$company) return 'Empresa no encontrada.';
 
         $column = $company->kanboardColumns->firstWhere('name', $columnName);
@@ -159,7 +159,7 @@ class GoNoGo extends Page
                 return "Kanboard no devolvió la tarea {$taskId}: {$err}";
             }
 
-            $projectId = (int) ($task['project_id'] ?? $company->kanboard_project_id ?? 0);
+            $projectId = (int) ($task['project_id'] ?? $company->settings?->kanboard_project_id ?? 0);
             $swimlaneId = (int) ($task['swimlane_id'] ?? 1);
 
             if (!$projectId) {

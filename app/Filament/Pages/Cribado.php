@@ -238,11 +238,17 @@ class Cribado extends Page
         $offer->update(['codigo_proyecto' => $codigoProyecto]);
 
         // Crear tarea en Kanboard
-        $company = Company::with('kanboardColumns')->find($companyId);
-        if (!$company || !$company->kanboard_project_id) return;
+        $company = Company::with(['settings', 'kanboardColumns'])->find($companyId);
+        if (!$company || !$company->settings?->kanboard_project_id) {
+            Log::warning('Cribado: empresa sin kanboard_project_id', ['company_id' => $companyId]);
+            return;
+        }
 
         $prospectsColumn = $company->kanboardColumns->firstWhere('name', 'PROSPECTS');
-        if (!$prospectsColumn) return;
+        if (!$prospectsColumn) {
+            Log::warning('Cribado: empresa sin columna PROSPECTS', ['company_id' => $companyId]);
+            return;
+        }
 
         try {
             $dueDate = $lead->presentacion ? Carbon::parse($lead->presentacion)->format('Y-m-d') . ' 00:00' : null;
@@ -254,10 +260,10 @@ class Cribado extends Page
                     'id' => 1,
                     'params' => [
                         'title' => $lead->cliente ?? 'Sin título',
-                        'project_id' => $company->kanboard_project_id,
+                        'project_id' => $company->settings->kanboard_project_id,
                         'column_id' => $prospectsColumn->kanboard_column_id,
-                        'category_id' => $company->kanboard_default_category_id,
-                        'owner_id' => $company->kanboard_default_owner_id,
+                        'category_id' => $company->settings->kanboard_default_category_id,
+                        'owner_id' => $company->settings->kanboard_default_owner_id,
                         'description' => ($lead->url ?? '') . "\n" . ($lead->resumen_objeto ?? ''),
                         'date_due' => $dueDate,
                     ],
@@ -265,23 +271,31 @@ class Cribado extends Page
 
             $taskId = $response->json('result');
 
-            if ($taskId) {
-                // Guardar task_id en la oferta y en infonalia
-                $offer->update(['kanboard_task' => $taskId]);
-                $lead->update(['kanboard_task_id' => $taskId]);
-
-                // Añadir enlace externo
-                if ($lead->url) {
-                    Http::withBasicAuth('jsonrpc', '9f80c6b25b7aa27c3ecca472ff61dade28a2c1c750f301e10bec4580596c')
-                        ->post('https://kanboard.cosmos-intelligence.com/jsonrpc.php', [
-                            'jsonrpc' => '2.0',
-                            'method' => 'createExternalTaskLink',
-                            'id' => 2,
-                            'params' => [$taskId, $lead->url, 'is_a_dependency'],
-                        ]);
-                }
+            if (!$taskId) {
+                Log::error('Kanboard createTask rechazado', [
+                    'offer_id' => $offer->id,
+                    'company_id' => $companyId,
+                    'error' => $response->json('error.message'),
+                    'body' => $response->body(),
+                ]);
+                return;
             }
-        } catch (\Exception $e) {
+
+            // Guardar task_id en la oferta y en infonalia
+            $offer->update(['kanboard_task' => $taskId]);
+            $lead->update(['kanboard_task_id' => $taskId]);
+
+            // Añadir enlace externo
+            if ($lead->url) {
+                Http::withBasicAuth('jsonrpc', '9f80c6b25b7aa27c3ecca472ff61dade28a2c1c750f301e10bec4580596c')
+                    ->post('https://kanboard.cosmos-intelligence.com/jsonrpc.php', [
+                        'jsonrpc' => '2.0',
+                        'method' => 'createExternalTaskLink',
+                        'id' => 2,
+                        'params' => [$taskId, $lead->url, 'is_a_dependency'],
+                    ]);
+            }
+        } catch (\Throwable $e) {
             Log::error('Kanboard task creation failed: ' . $e->getMessage());
         }
     }

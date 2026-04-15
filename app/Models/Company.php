@@ -5,14 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * Compania maestra en Stockflow Core.
+ * Empresa maestra en Stockflow Core.
  *
- * Los campos base (name, abbrev, cif, email, phone, is_active) los define
- * core. Los campos especificos del CRM (slug, logos, colores, Kanboard,
- * go_nogo_model) se anaden via migracion adicional sobre la misma tabla core.
+ * Solo identidad: `id`, `name`. El resto de campos que pueda haber en
+ * `core.companies` (kanboard_*, go_nogo_model, branding...) son legado
+ * de una iteracion anterior y NO se leen ni escriben desde CRM —
+ * los ajustes del CRM viven en la tabla local `company_settings` via
+ * la relacion `settings()`.
  */
 class Company extends Model
 {
@@ -21,24 +24,9 @@ class Company extends Model
     protected $connection = 'autoritas_production';
     protected $table = 'companies';
 
-    protected $fillable = [
-        // campos base de core
-        'name',
-        'abbrev',
-        'cif',
-        'email',
-        'phone',
-        'is_active',
-        // campos CRM (ver migracion add_crm_fields_to_core_companies)
-        'slug',
-        'logo_path',
-        'icon_path',
-        'primary_color',
-        'kanboard_project_id',
-        'kanboard_default_category_id',
-        'kanboard_default_owner_id',
-        'go_nogo_model',
-    ];
+    // CRM no actualiza companies en Core. Dejamos $fillable vacio para
+    // evitar writes accidentales. Los lectores acceden por attribute.
+    protected $fillable = [];
 
     protected function casts(): array
     {
@@ -47,16 +35,23 @@ class Company extends Model
         ];
     }
 
+    // -- Identidad / usuarios (Core) --------------------------------------
+
     public function users(): HasMany
     {
         return $this->hasMany(User::class, 'company_id');
     }
 
-    // -- Relaciones locales (otra conexion) ------------------------------
+    // -- Ajustes locales del CRM (otra conexion, sin FK fisica) -----------
     //
-    // Al estar Company en la conexion core y estos modelos en la local,
-    // Eloquent ejecuta dos queries separadas (no JOIN) y las relaciones
-    // funcionan siempre que cada modelo declare su `$connection`.
+    // Eloquent ejecuta queries separadas por modelo cuando cada uno declara
+    // su `$connection`. `company_id` en las tablas locales es una FK logica
+    // hacia `core.companies.id`.
+
+    public function settings(): HasOne
+    {
+        return $this->hasOne(CompanySetting::class, 'company_id');
+    }
 
     public function opportunities(): HasMany
     {

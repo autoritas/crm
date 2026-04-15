@@ -81,7 +81,7 @@ Route::middleware('api.key')->prefix('flow')->group(function () {
 
     Route::get('go-nogo-model', function (\Illuminate\Http\Request $request) {
         $companyId = $request->integer('company_id', 0);
-        $model = \App\Models\Company::where('id', $companyId)->value('go_nogo_model');
+        $model = \App\Models\CompanySetting::where('company_id', $companyId)->value('go_nogo_model');
         return response()->json(['model' => $model]);
     });
 

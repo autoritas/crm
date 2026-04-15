@@ -10,6 +10,14 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
+/**
+ * Administra empresas.
+ *
+ * La identidad (`name`) viene de Core y NO se edita aqui.
+ * Todo lo demas (branding, Kanboard, modelo Go/NoGo) vive en la
+ * tabla local `company_settings` y se mapea al form via hooks en
+ * la pagina EditCompany.
+ */
 class CompanyResource extends Resource
 {
     protected static ?string $model = Company::class;
@@ -33,22 +41,22 @@ class CompanyResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Datos de la empresa')
+                Forms\Components\Section::make('Identidad (Core)')
+                    ->description('Estos datos se gestionan en Stockflow Core y no son editables desde el CRM.')
                     ->schema([
                         Forms\Components\TextInput::make('name')
                             ->label('Nombre')
-                            ->required()
-                            ->maxLength(255),
+                            ->disabled()
+                            ->dehydrated(false),
+                    ])->columns(1),
+
+                Forms\Components\Section::make('Ajustes locales del CRM')
+                    ->schema([
                         Forms\Components\TextInput::make('slug')
                             ->label('Slug')
-                            ->required()
-                            ->unique(ignoreRecord: true)
                             ->maxLength(255),
                         Forms\Components\ColorPicker::make('primary_color')
                             ->label('Color principal'),
-                        Forms\Components\Toggle::make('is_active')
-                            ->label('Activa')
-                            ->default(true),
                     ])->columns(2),
 
                 Forms\Components\Section::make('Imagen corporativa')
@@ -179,22 +187,16 @@ class CompanyResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\ImageColumn::make('icon_path')
-                    ->label('Icono')
-                    ->disk('public')
-                    ->circular()
-                    ->size(32),
-                Tables\Columns\ImageColumn::make('logo_path')
-                    ->label('Logo')
-                    ->disk('public')
-                    ->height(30),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nombre')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('slug')
+                Tables\Columns\TextColumn::make('settings.slug')
                     ->label('Slug')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('settings.kanboard_project_id')
+                    ->label('Kanboard project')
+                    ->badge(),
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Activa')
                     ->boolean(),
@@ -206,11 +208,7 @@ class CompanyResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
+            ->bulkActions([]);
     }
 
     public static function getPages(): array
