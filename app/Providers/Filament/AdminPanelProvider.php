@@ -27,7 +27,9 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login(\App\Filament\Pages\Auth\Login::class)
+            // Login delegado a Stockflow Core (routes/web.php -> AuthController).
+            // NO activamos ->login() aqui para que Filament redirija al login
+            // de Laravel (ruta con nombre 'login') en vez de su pagina propia.
             ->brandName('CRM')
             ->brandLogo(fn () => view('filament.components.brand-logo'))
             ->colors([
