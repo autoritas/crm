@@ -65,8 +65,6 @@ class OfertasKanboard extends Page implements HasTable
                     ->label('Proyecto')->limit(40),
                 Tables\Columns\TextColumn::make('fecha_presentacion')
                     ->label('Presentación')->date('d/m/Y')->sortable(),
-                Tables\Columns\TextColumn::make('importe_licitacion')
-                    ->label('Importe')->money('eur', locale: 'es'),
             ])
             ->defaultPaginationPageOption(25)
             ->paginated([25, 50, 100])
@@ -89,9 +87,11 @@ class OfertasKanboard extends Page implements HasTable
                         $error = $this->createKanboardTask($record, (int) $data['workflow_id']);
                         if ($error) {
                             Notification::make()->title('No se pudo crear la tarea')->body($error)->danger()->send();
-                        } else {
-                            Notification::make()->title("Oferta #{$record->id}: tarea creada y cerrada")->success()->send();
+                            return;
                         }
+                        Notification::make()->title("Oferta #{$record->id}: tarea creada y cerrada")->success()->send();
+                        // Refresca la tabla para que la fila desaparezca (ya tiene kanboard_task).
+                        $this->resetTable();
                     }),
             ]);
     }
