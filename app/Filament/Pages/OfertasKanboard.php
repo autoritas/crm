@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Models\Company;
 use App\Models\Offer;
+use App\Models\OfferWorkflow;
 use Carbon\Carbon;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
@@ -16,9 +17,14 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Herramienta admin: lista las ofertas sin `kanboard_task` y permite
- * crear la tarea en Kanboard (o crearla y cerrarla si corresponde a
- * ofertas ya finalizadas).
+ * Herramienta admin: ofertas sin `kanboard_task`. Permite crear la
+ * tarea Kanboard retrospectivamente eligiendo la FASE del workflow
+ * en la que queremos colocarla. En todos los casos la tarea se crea
+ * y se cierra inmediatamente (se trata de backfill historico).
+ *
+ * Mapping fase -> columna Kanboard:
+ *  - Si la fase se llama "Cerrada" -> columna GANADO.
+ *  - En caso contrario: `company_kanboard_columns.position = offer_workflows.sort_order`.
  */
 class OfertasKanboard extends Page implements HasTable
 {
@@ -32,12 +38,8 @@ class OfertasKanboard extends Page implements HasTable
     protected static ?int $navigationSort = 21;
     protected static string $view = 'filament.pages.ofertas-kanboard';
 
-    /** Valor especial del select que significa "crear en GANADO + cerrar". */
-    private const OPTION_CLOSED = '__closed__';
-
     public static function shouldRegisterNavigation(): bool
     {
-        // Solo visible desde el card en Herramientas.
         return false;
     }
 
@@ -63,8 +65,8 @@ class OfertasKanboard extends Page implements HasTable
                     ->label('Proyecto')->limit(40),
                 Tables\Columns\TextColumn::make('fecha_presentacion')
                     ->label('Presentación')->date('d/m/Y')->sortable(),
-                Tables\Columns\TextColumn::make('go_nogo')
-                    ->label('Go/NoGo')->badge(),
+                Tables\Columns\TextColumn::make('importe_licitacion')
+                    ->label('Importe')->money('eur', locale: 'es'),
             ])
             ->defaultPaginationPageOption(25)
             ->paginated([25, 50, 100])
@@ -74,62 +76,74 @@ class OfertasKanboard extends Page implements HasTable
                     ->icon('heroicon-o-plus-circle')
                     ->color('success')
                     ->modalHeading(fn (Offer $record) => "Crear tarea para oferta #{$record->id}")
-                    ->modalSubmitActionLabel('Crear')
+                    ->modalSubmitActionLabel('Crear y cerrar')
                     ->form(fn (Offer $record) => [
-                        Select::make('column_name')
-                            ->label('Columna destino')
-                            ->options($this->columnOptions($record->company_id))
-                            ->default(self::OPTION_CLOSED)
+                        Select::make('workflow_id')
+                            ->label('Fase')
+                            ->options($this->workflowOptions($record->company_id))
+                            ->default($this->defaultWorkflowId($record->company_id))
                             ->required()
-                            ->helperText('«Cerrada (GANADO)» crea la tarea y la cierra inmediatamente.'),
+                            ->helperText('La tarea se creara en la columna correspondiente a la fase y se cerrara. "Cerrada" va a la columna GANADO.'),
                     ])
                     ->action(function (Offer $record, array $data) {
-                        $error = $this->createKanboardTask($record, (string) $data['column_name']);
+                        $error = $this->createKanboardTask($record, (int) $data['workflow_id']);
                         if ($error) {
                             Notification::make()->title('No se pudo crear la tarea')->body($error)->danger()->send();
                         } else {
-                            Notification::make()->title("Tarea Kanboard creada para oferta #{$record->id}")->success()->send();
+                            Notification::make()->title("Oferta #{$record->id}: tarea creada y cerrada")->success()->send();
                         }
                     }),
             ]);
     }
 
     /**
-     * Opciones del select: columnas de la empresa + opcion especial «Cerrada».
+     * Opciones del select: fases del workflow de la empresa.
      */
-    private function columnOptions(int $companyId): array
+    private function workflowOptions(int $companyId): array
     {
-        $company = Company::with('kanboardColumns')->find($companyId);
-        $options = [];
-        foreach ($company?->kanboardColumns ?? [] as $col) {
-            $options[(string) $col->kanboard_column_id] = $col->name;
-        }
-        $options[self::OPTION_CLOSED] = 'Cerrada (en GANADO + cerrar)';
-        return $options;
+        return OfferWorkflow::where('company_id', $companyId)
+            ->orderBy('sort_order')
+            ->pluck('name', 'id')
+            ->toArray();
     }
 
     /**
-     * Crea la tarea en Kanboard, guarda `kanboard_task` en la oferta y
-     * — si el usuario eligio «Cerrada» — cierra la tarea.
-     * Devuelve null si OK, o mensaje de error.
+     * Fase por defecto del select: "Cerrada" si existe, si no la ultima.
      */
-    private function createKanboardTask(Offer $offer, string $choice): ?string
+    private function defaultWorkflowId(int $companyId): ?int
     {
+        $cerrada = OfferWorkflow::where('company_id', $companyId)
+            ->whereRaw('LOWER(name) = ?', ['cerrada'])
+            ->value('id');
+
+        if ($cerrada) return (int) $cerrada;
+
+        return (int) OfferWorkflow::where('company_id', $companyId)
+            ->orderByDesc('sort_order')
+            ->value('id');
+    }
+
+    /**
+     * Crea la tarea en Kanboard, guarda `kanboard_task` + `id_workflow` en
+     * la oferta, y cierra la tarea. Devuelve null si OK, o mensaje de error.
+     */
+    private function createKanboardTask(Offer $offer, int $workflowId): ?string
+    {
+        $workflow = OfferWorkflow::where('company_id', $offer->company_id)
+            ->where('id', $workflowId)->first();
+        if (!$workflow) return 'Fase no válida.';
+
         $company = Company::with(['settings', 'kanboardColumns'])->find($offer->company_id);
         $projectId = $company?->settings?->kanboard_project_id;
-        if (!$projectId) {
-            return 'La empresa no tiene kanboard_project_id configurado.';
-        }
+        if (!$projectId) return 'La empresa no tiene kanboard_project_id configurado.';
 
-        $closeAfter = false;
-        if ($choice === self::OPTION_CLOSED) {
-            $ganado = $company->kanboardColumns->firstWhere('name', 'GANADO');
-            if (!$ganado) return "No existe la columna 'GANADO' configurada.";
-            $columnId = (int) $ganado->kanboard_column_id;
-            $closeAfter = true;
-        } else {
-            $columnId = (int) $choice;
-            if (!$columnId) return 'Columna no válida.';
+        // Mapping fase -> columna Kanboard.
+        $column = strcasecmp($workflow->name, 'Cerrada') === 0
+            ? $company->kanboardColumns->firstWhere('name', 'GANADO')
+            : $company->kanboardColumns->firstWhere('position', $workflow->sort_order);
+
+        if (!$column) {
+            return "No hay columna Kanboard para la fase '{$workflow->name}' (position={$workflow->sort_order}).";
         }
 
         $endpoint = 'https://kanboard.cosmos-intelligence.com/jsonrpc.php';
@@ -148,7 +162,7 @@ class OfertasKanboard extends Page implements HasTable
                 'params'  => [
                     'title'       => $offer->cliente ?: ('Oferta #' . $offer->id),
                     'project_id'  => (int) $projectId,
-                    'column_id'   => $columnId,
+                    'column_id'   => (int) $column->kanboard_column_id,
                     'category_id' => $company->settings?->kanboard_default_category_id,
                     'owner_id'    => $company->settings?->kanboard_default_owner_id,
                     'description' => $offer->proyecto ?: ($offer->objeto ?: ''),
@@ -158,17 +172,20 @@ class OfertasKanboard extends Page implements HasTable
 
             $taskId = (int) ($resp->json('result') ?? 0);
             if (!$taskId) {
-                $err = $resp->json('error.message') ?? 'respuesta vacia';
+                $err = $resp->json('error.message') ?? 'respuesta vacía';
                 Log::error('OfertasKanboard createTask error', [
                     'offer_id' => $offer->id, 'error' => $err, 'body' => $resp->body(),
                 ]);
                 return 'Kanboard rechazó createTask: ' . $err;
             }
 
-            // 2) Guardar task_id en la oferta
-            $offer->update(['kanboard_task' => $taskId]);
+            // 2) Guardar kanboard_task + id_workflow en la oferta
+            $offer->update([
+                'kanboard_task' => $taskId,
+                'id_workflow'   => $workflow->id,
+            ]);
 
-            // 3) External link (URL)
+            // 3) External link (URL) opcional
             if ($offer->url) {
                 Http::withBasicAuth(...$auth)->post($endpoint, [
                     'jsonrpc' => '2.0',
@@ -178,26 +195,23 @@ class OfertasKanboard extends Page implements HasTable
                 ]);
             }
 
-            // 4) Si es «Cerrada», cerrar task
-            if ($closeAfter) {
-                $close = Http::withBasicAuth(...$auth)->post($endpoint, [
-                    'jsonrpc' => '2.0',
-                    'method'  => 'closeTask',
-                    'id'      => 3,
-                    'params'  => ['task_id' => $taskId],
+            // 4) Cerrar la tarea (siempre, es backfill)
+            $close = Http::withBasicAuth(...$auth)->post($endpoint, [
+                'jsonrpc' => '2.0',
+                'method'  => 'closeTask',
+                'id'      => 3,
+                'params'  => ['task_id' => $taskId],
+            ]);
+            if ($close->json('result') !== true) {
+                Log::warning('OfertasKanboard closeTask', [
+                    'offer_id' => $offer->id, 'task_id' => $taskId, 'body' => $close->body(),
                 ]);
-                if ($close->json('result') !== true) {
-                    Log::warning('OfertasKanboard closeTask error', [
-                        'offer_id' => $offer->id, 'task_id' => $taskId,
-                        'body' => $close->body(),
-                    ]);
-                    // No consideramos fallo critico: la tarea ya se creo.
-                }
+                // No es fallo crítico: la tarea ya se creó.
             }
 
             return null;
         } catch (\Throwable $e) {
-            Log::error('OfertasKanboard excepcion: ' . $e->getMessage());
+            Log::error('OfertasKanboard excepción: ' . $e->getMessage());
             return 'Excepción: ' . $e->getMessage();
         }
     }
