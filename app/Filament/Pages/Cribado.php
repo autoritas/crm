@@ -10,7 +10,6 @@ use App\Models\OfferStatus;
 use App\Models\OfferType;
 use App\Models\ScreeningReason;
 use Carbon\Carbon;
-use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\DB;
@@ -35,13 +34,9 @@ class Cribado extends Page
     {
         $companyId = (int) session('current_company_id', 1);
 
-        // Obtener el status "Pendiente" para filtrar decision = Pendiente
         $pendienteId = InfonaliaStatus::where('company_id', $companyId)
             ->where('is_default_filter', true)
             ->value('id');
-
-        // Agrupar por ia_decision
-        $statuses = InfonaliaStatus::where('company_id', $companyId)->get()->keyBy('id');
 
         $items = InfonaliaData::where('company_id', $companyId)
             ->where('id_decision', $pendienteId)
@@ -169,7 +164,6 @@ class Cribado extends Page
             'revisado_fecha' => now(),
         ]);
 
-        // Si el status genera oferta → crear oferta + tarea Kanboard
         if ($iaStatus && $iaStatus->generates_offer) {
             $this->createOfferAndKanboardTask($record);
             Notification::make()->title('Confirmado: ' . $iaStatus->status . ' → Oferta creada + Kanboard')->success()->send();
@@ -191,7 +185,21 @@ class Cribado extends Page
             'screening_comment' => $comment,
         ]);
 
-        // Si el nuevo status genera oferta → crear oferta + tarea Kanboard
+        // Determinar tipo de transicion y actualizar contexto de la empresa
+        $transitionType = $this->resolveTransitionType($newStatus);
+        if ($transitionType && $reasonId) {
+            $reason = ScreeningReason::find($reasonId);
+            if ($reason) {
+                $this->appendToCompanyContext(
+                    $record->company_id,
+                    $transitionType,
+                    $reason->reason,
+                    $comment,
+                    $record->cliente
+                );
+            }
+        }
+
         if ($newStatus && $newStatus->generates_offer) {
             $this->createOfferAndKanboardTask($record);
             Notification::make()->title("Cambiado a: {$newStatus->status} → Oferta creada + Kanboard")->success()->send();
@@ -200,22 +208,94 @@ class Cribado extends Page
         }
     }
 
+    /**
+     * Determina si la transicion requiere feedback en el contexto.
+     * - generates_offer (Ofertar/Focus) → 'positive'
+     * - Descartar/No Focus → 'negative'
+     * - Dudoso/Pendiente → null (no requiere feedback)
+     */
+    private function resolveTransitionType(?InfonaliaStatus $targetStatus): ?string
+    {
+        if (!$targetStatus) {
+            return null;
+        }
+
+        if ($targetStatus->generates_offer) {
+            return 'positive';
+        }
+
+        if ($targetStatus->is_default_filter) {
+            return null;
+        }
+
+        // Dudoso no genera feedback de contexto
+        if (in_array(mb_strtolower($targetStatus->status), ['dudoso'])) {
+            return null;
+        }
+
+        // Todo lo demas (Descartar, No Focus, etc.) es negativo
+        return 'negative';
+    }
+
+    /**
+     * Añade feedback humano al campo context de core.companies.
+     * Este contexto es usado por la IA en futuros procesos de cribado.
+     */
+    private function appendToCompanyContext(int $companyId, string $type, string $reason, ?string $comment, ?string $leadCliente): void
+    {
+        $current = DB::connection('autoritas_production')
+            ->table('companies')
+            ->where('id', $companyId)
+            ->value('context');
+
+        $sectionHeader = $type === 'positive'
+            ? 'FEEDBACK HUMANO - MOTIVOS POSITIVOS (ofertar):'
+            : 'FEEDBACK HUMANO - MOTIVOS NEGATIVOS (descartar):';
+
+        $entry = "   - {$reason}";
+        if ($comment) {
+            $entry .= " — {$comment}";
+        }
+        if ($leadCliente) {
+            $entry .= " (Lead: {$leadCliente})";
+        }
+        $entry .= ' [' . now()->format('Y-m-d') . ']';
+
+        // Si la seccion ya existe, insertar bajo ella; si no, crearla al final
+        if ($current && str_contains($current, $sectionHeader)) {
+            // Buscar la posicion justo despues del header para insertar la nueva linea
+            $pos = strpos($current, $sectionHeader);
+            $afterHeader = $pos + strlen($sectionHeader);
+            $newContext = substr($current, 0, $afterHeader) . "\n" . $entry . substr($current, $afterHeader);
+        } else {
+            $newContext = ($current ? $current . "\n\n" : '') . $sectionHeader . "\n" . $entry;
+        }
+
+        DB::connection('autoritas_production')
+            ->table('companies')
+            ->where('id', $companyId)
+            ->update(['context' => $newContext]);
+
+        Log::info("Cribado: contexto actualizado [{$type}]", [
+            'company_id' => $companyId,
+            'reason' => $reason,
+            'lead' => $leadCliente,
+        ]);
+    }
+
     private function createOfferAndKanboardTask(InfonaliaData $lead): void
     {
-        // Verificar que no exista ya oferta para este lead
         if (Offer::where('id_infonalia_data', $lead->id)->exists()) {
             return;
         }
 
         $companyId = $lead->company_id;
 
-        // Status y tipo por defecto
         $defaultStatus = OfferStatus::where('company_id', $companyId)
             ->where('is_default_filter', true)->first();
         $defaultType = OfferType::where('company_id', $companyId)
             ->where('name', 'Concurso')->first();
 
-        // Crear oferta
         $offer = Offer::create([
             'company_id' => $companyId,
             'id_infonalia_data' => $lead->id,
@@ -232,7 +312,6 @@ class Cribado extends Page
             'sector' => 'Público',
         ]);
 
-        // Generar codigo_proyecto
         $year = $lead->presentacion ? Carbon::parse($lead->presentacion)->year : now()->year;
         $codigoProyecto = $year . str_pad($offer->id, 6, '0', STR_PAD_LEFT);
         $offer->update(['codigo_proyecto' => $codigoProyecto]);
@@ -281,11 +360,9 @@ class Cribado extends Page
                 return;
             }
 
-            // Guardar task_id en la oferta y en infonalia
             $offer->update(['kanboard_task' => $taskId]);
             $lead->update(['kanboard_task_id' => $taskId]);
 
-            // Añadir enlace externo
             if ($lead->url) {
                 Http::withBasicAuth('jsonrpc', '9f80c6b25b7aa27c3ecca472ff61dade28a2c1c750f301e10bec4580596c')
                     ->post('https://kanboard.cosmos-intelligence.com/jsonrpc.php', [
@@ -304,6 +381,33 @@ class Cribado extends Page
     {
         $companyId = (int) session('current_company_id', 1);
         return InfonaliaStatus::where('company_id', $companyId)->pluck('status', 'id')->toArray();
+    }
+
+    /**
+     * Mapa de status_id → tipo de transicion para el frontend.
+     * 'ofertar' = genera oferta (motivo positivo requerido)
+     * 'descartar' = descarte (motivo negativo requerido)
+     * 'dudoso' / 'pendiente' = sin motivo requerido
+     */
+    public function getStatusTypes(): array
+    {
+        $companyId = (int) session('current_company_id', 1);
+        $statuses = InfonaliaStatus::where('company_id', $companyId)->get();
+        $types = [];
+
+        foreach ($statuses as $s) {
+            if ($s->generates_offer) {
+                $types[$s->id] = 'ofertar';
+            } elseif ($s->is_default_filter) {
+                $types[$s->id] = 'pendiente';
+            } elseif (in_array(mb_strtolower($s->status), ['dudoso'])) {
+                $types[$s->id] = 'dudoso';
+            } else {
+                $types[$s->id] = 'descartar';
+            }
+        }
+
+        return $types;
     }
 
     public function getNegativeReasons(): array

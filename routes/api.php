@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Api\ClientNormalizationController;
-use App\Http\Controllers\Api\OfferFlowController;
 use Illuminate\Support\Facades\Route;
 
 // API protegida por token simple (header X-API-KEY)
@@ -38,15 +37,8 @@ Route::middleware('api.key')->group(function () {
 
 });
 
-// Flujo Lead → Oferta → Kanboard
+// Go/NoGo — solo ofertas en columna PROSPECTS de Kanboard
 Route::middleware('api.key')->prefix('flow')->group(function () {
-    Route::get('pending-leads', [OfferFlowController::class, 'pendingLeads']);
-    Route::post('create-offer-from-lead', [OfferFlowController::class, 'createOfferFromLead']);
-    Route::get('kanboard-config', [OfferFlowController::class, 'kanboardConfig']);
-    Route::post('discard-offer', [OfferFlowController::class, 'discardOffer']);
-    Route::post('update-offer-kanboard', [OfferFlowController::class, 'updateOfferKanboard']);
-
-    // Go/NoGo — solo ofertas en columna PROSPECTS de Kanboard
     Route::get('go-nogo-pending', function (\Illuminate\Http\Request $request) {
         $companyId = $request->integer('company_id', 0);
 

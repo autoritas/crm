@@ -85,20 +85,6 @@
             </div>
         </a>
 
-        {{-- Card: Herramientas --}}
-        <a href="{{ route('filament.admin.pages.admin-herramientas') }}"
-           class="block rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md hover:border-primary-500 dark:border-gray-700 dark:bg-gray-800">
-            <div class="flex items-center gap-4">
-                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-teal-50 dark:bg-teal-500/10">
-                    <x-heroicon-o-wrench-screwdriver class="h-6 w-6 text-teal-600 dark:text-teal-400" />
-                </div>
-                <div>
-                    <h3 class="text-base font-semibold text-gray-900 dark:text-white">Herramientas</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Sincronizacion legacy y utilidades</p>
-                </div>
-            </div>
-        </a>
-
         {{-- Card: Credenciales API --}}
         <a href="{{ route('filament.admin.resources.api-credentials.index') }}"
            class="block rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md hover:border-primary-500 dark:border-gray-700 dark:bg-gray-800">

@@ -2,9 +2,9 @@
     @php
         $groups = $this->getGroups();
         $statusOptions = $this->getStatusOptions();
+        $statusTypes = $this->getStatusTypes();
         $negativeReasons = $this->getNegativeReasons();
         $positiveReasons = $this->getPositiveReasons();
-        $allReasons = $negativeReasons + $positiveReasons;
     @endphp
 
     @if(empty($groups))
@@ -124,23 +124,40 @@
                                     </div>
                                 </div>
 
-                                {{-- Panel de rechazo (pulgar abajo) --}}
-                                @php
-                                    // Si la IA dijo positivo (Ofertar) y el humano rechaza → motivo negativo
-                                    // Si la IA dijo negativo (Descartar) y el humano rechaza → motivo positivo
-                                    $iaStatusName = strtolower($item->iaDecision?->status ?? '');
-                                    $iaWasPositive = in_array($iaStatusName, ['ofertar', 'focus']);
-                                    $reasonsForOverride = $iaWasPositive ? $negativeReasons : $positiveReasons;
-                                    $reasonTypeLabel = $iaWasPositive ? 'Motivo negativo (por que no ofertar)' : 'Motivo positivo (por que si ofertar)';
-                                @endphp
+                                {{-- Panel de override con motivos dinamicos segun decision destino --}}
                                 <div x-show="showOverride" x-cloak x-transition
                                      style="margin-top: 12px; padding: 14px; border-radius: 10px; border: 1px solid #fca5a5; background: #fef2f2;"
                                      x-data="{
                                         newDecision: '',
                                         reasonId: '',
                                         comment: '',
+                                        statusTypes: @js($statusTypes),
+                                        positiveReasons: @js($positiveReasons),
+                                        negativeReasons: @js($negativeReasons),
+                                        get targetType() {
+                                            if (!this.newDecision) return null;
+                                            return this.statusTypes[this.newDecision] || null;
+                                        },
+                                        get needsReason() {
+                                            return this.targetType === 'ofertar' || this.targetType === 'descartar';
+                                        },
+                                        get reasons() {
+                                            if (this.targetType === 'ofertar') return this.positiveReasons;
+                                            if (this.targetType === 'descartar') return this.negativeReasons;
+                                            return {};
+                                        },
+                                        get reasonLabel() {
+                                            if (this.targetType === 'ofertar') return 'Motivo positivo (por que si ofertar) *';
+                                            if (this.targetType === 'descartar') return 'Motivo negativo (por que descartar) *';
+                                            return 'Motivo (opcional)';
+                                        },
+                                        get canSubmit() {
+                                            if (!this.newDecision) return false;
+                                            if (this.needsReason && !this.reasonId) return false;
+                                            return true;
+                                        },
                                         submit() {
-                                            if (!this.newDecision) return;
+                                            if (!this.canSubmit) return;
                                             let dec = parseInt(this.newDecision);
                                             let reason = this.reasonId ? parseInt(this.reasonId) : null;
                                             let comm = this.comment || null;
@@ -155,7 +172,7 @@
                                     <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
                                         <div>
                                             <label style="display: block; font-size: 11px; font-weight: 500; color: #4b5563; margin-bottom: 4px;">Decision correcta *</label>
-                                            <select x-model="newDecision" style="width: 100%; font-size: 13px; border-radius: 8px; border: 1px solid #d1d5db; padding: 6px 8px;">
+                                            <select x-model="newDecision" x-on:change="reasonId = ''" style="width: 100%; font-size: 13px; border-radius: 8px; border: 1px solid #d1d5db; padding: 6px 8px;">
                                                 <option value="">Seleccionar...</option>
                                                 @foreach($statusOptions as $id => $name)
                                                     <option value="{{ $id }}">{{ $name }}</option>
@@ -163,13 +180,18 @@
                                             </select>
                                         </div>
                                         <div>
-                                            <label style="display: block; font-size: 11px; font-weight: 500; color: #4b5563; margin-bottom: 4px;">{{ $reasonTypeLabel }}</label>
-                                            <select x-model="reasonId" style="width: 100%; font-size: 13px; border-radius: 8px; border: 1px solid #d1d5db; padding: 6px 8px;">
+                                            <label style="display: block; font-size: 11px; font-weight: 500; color: #4b5563; margin-bottom: 4px;" x-text="reasonLabel"></label>
+                                            <select x-model="reasonId" style="width: 100%; font-size: 13px; border-radius: 8px; border: 1px solid #d1d5db; padding: 6px 8px;"
+                                                    :style="needsReason && !reasonId ? 'border-color: #f87171' : ''">
                                                 <option value="">Seleccionar motivo...</option>
-                                                @foreach($reasonsForOverride as $id => $reason)
-                                                    <option value="{{ $id }}">{{ $reason }}</option>
-                                                @endforeach
+                                                <template x-for="[id, text] in Object.entries(reasons)" :key="id">
+                                                    <option :value="id" x-text="text"></option>
+                                                </template>
                                             </select>
+                                            <p x-show="needsReason && !reasonId && newDecision" x-cloak
+                                               style="font-size: 10px; color: #ef4444; margin-top: 2px;">
+                                                Motivo obligatorio para esta transicion
+                                            </p>
                                         </div>
                                         <div>
                                             <label style="display: block; font-size: 11px; font-weight: 500; color: #4b5563; margin-bottom: 4px;">Comentario</label>
@@ -178,8 +200,10 @@
                                         <div style="display: flex; align-items: flex-end; gap: 8px;">
                                             <button
                                                 x-on:click="submit()"
-                                                :disabled="!newDecision"
-                                                style="padding: 7px 16px; font-size: 12px; font-weight: 600; border-radius: 8px; background: #dc2626; color: white; border: none; cursor: pointer;"
+                                                :disabled="!canSubmit"
+                                                :style="canSubmit
+                                                    ? 'padding: 7px 16px; font-size: 12px; font-weight: 600; border-radius: 8px; background: #dc2626; color: white; border: none; cursor: pointer;'
+                                                    : 'padding: 7px 16px; font-size: 12px; font-weight: 600; border-radius: 8px; background: #e5e7eb; color: #94a3b8; border: none; cursor: not-allowed;'"
                                             >
                                                 Corregir
                                             </button>

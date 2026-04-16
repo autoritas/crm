@@ -32,6 +32,7 @@ class AdminPanelProvider extends PanelProvider
             // de Laravel (ruta con nombre 'login') en vez de su pagina propia.
             ->brandName('CRM')
             ->brandLogo(fn () => view('filament.components.brand-logo'))
+            ->favicon(asset('icon.svg'))
             ->colors([
                 'primary' => Color::Blue,
             ])
@@ -50,6 +51,12 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 'panels::topbar.start',
                 fn () => view('filament.components.company-switcher'),
+            )
+            ->renderHook(
+                'panels::topbar.end',
+                fn () => ! app()->environment('production')
+                    ? '<div style="position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:9999;background:#ef4444;color:white;font-size:12px;font-weight:800;letter-spacing:0.15em;padding:5px 20px;border-radius:6px;text-transform:uppercase;pointer-events:none;box-shadow:0 2px 8px rgba(239,68,68,0.4);">DESARROLLO</div>'
+                    : '',
             )
             ->renderHook(
                 'panels::sidebar.nav.start',
