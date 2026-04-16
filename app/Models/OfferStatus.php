@@ -17,6 +17,7 @@ class OfferStatus extends Model
         'color',
         'is_default_filter',
         'is_default_discard',
+        'is_default_lost',
     ];
 
     protected function casts(): array
@@ -24,6 +25,7 @@ class OfferStatus extends Model
         return [
             'is_default_filter' => 'boolean',
             'is_default_discard' => 'boolean',
+            'is_default_lost' => 'boolean',
         ];
     }
 

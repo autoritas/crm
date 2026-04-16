@@ -47,6 +47,10 @@ class OfferStatusResource extends Resource
                     ->label('Estado descarte')
                     ->helperText('Estado que se asigna cuando se descarta una oferta desde Kanboard.')
                     ->default(false),
+                Forms\Components\Toggle::make('is_default_lost')
+                    ->label('Estado perdido')
+                    ->helperText('Estado que se asigna por defecto cuando se marca una oferta como perdida.')
+                    ->default(false),
             ]);
     }
 
@@ -70,6 +74,9 @@ class OfferStatusResource extends Resource
                     ->boolean(),
                 Tables\Columns\IconColumn::make('is_default_discard')
                     ->label('Descarte')
+                    ->boolean(),
+                Tables\Columns\IconColumn::make('is_default_lost')
+                    ->label('Perdido')
                     ->boolean(),
             ])
             ->actions([

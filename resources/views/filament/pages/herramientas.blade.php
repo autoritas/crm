@@ -60,5 +60,25 @@
             </a>
         </div>
 
+        <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <div class="mb-4 flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-50 dark:bg-primary-500/10">
+                    <x-heroicon-o-clock class="h-5 w-5 text-primary-600 dark:text-primary-400" />
+                </div>
+                <div>
+                    <h3 class="text-base font-semibold text-gray-900 dark:text-white">Pendientes por fase</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        Consulta todas las ofertas pendientes de decidir, filtradas por su fase en Kanboard.
+                    </p>
+                </div>
+            </div>
+
+            <a href="{{ \App\Filament\Pages\PendientesPorFase::getUrl() }}"
+               class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500">
+                <x-heroicon-o-arrow-top-right-on-square class="h-4 w-4" />
+                Abrir herramienta
+            </a>
+        </div>
+
     </div>
 </x-filament-panels::page>
