@@ -3,6 +3,8 @@
 /public/build
 /public/hot
 /public/storage
+# Favicon por empresa - se mantiene localmente en cada entorno
+/public/icon.svg
 /storage/*.key
 /storage/pail
 /vendor

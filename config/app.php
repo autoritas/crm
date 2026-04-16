@@ -30,6 +30,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Show Development Banner
+    |--------------------------------------------------------------------------
+    |
+    | Controla el cartel "DESARROLLO" que aparece en el topbar del panel.
+    | Solo se muestra cuando SHOW_DEV_BANNER=true en .env. En produccion
+    | basta con no definir la variable (o ponerla a false) para ocultarlo.
+    |
+    */
+
+    'show_dev_banner' => env('SHOW_DEV_BANNER', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Debug Mode
     |--------------------------------------------------------------------------
     |
