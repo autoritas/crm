@@ -45,6 +45,12 @@ Route::middleware('api.key')->prefix('flow')->group(function () {
         $prospectsColId = \App\Models\CompanyKanboardColumn::where('company_id', $companyId)
             ->where('name', 'PROSPECTS')->value('kanboard_column_id');
 
+        if (!$prospectsColId) {
+            return response()->json(['data' => [], 'prompt' => null]);
+        }
+
+        $prompt = \App\Models\CompanySetting::where('company_id', $companyId)->value('go_nogo_model');
+
         $offers = \App\Models\Offer::where('company_id', $companyId)
             ->where('go_nogo', 'PENDIENTE')
             ->whereNull('ia_go_nogo')
@@ -54,21 +60,62 @@ Route::middleware('api.key')->prefix('flow')->group(function () {
             ->limit(20)
             ->get();
 
-        // Filtrar solo las que están en PROSPECTS en Kanboard
-        if ($offers->isEmpty() || !$prospectsColId) {
-            return response()->json(['data' => []]);
+        if ($offers->isEmpty()) {
+            return response()->json(['data' => [], 'prompt' => $prompt]);
         }
 
-        $taskIds = $offers->pluck('kanboard_task')->map(fn ($v) => (int) $v)->filter()->toArray();
+        $taskIds = $offers->pluck('kanboard_task')->map(fn ($v) => (int) $v)->filter()->unique()->values()->toArray();
+        if (empty($taskIds)) {
+            return response()->json(['data' => [], 'prompt' => $prompt]);
+        }
+
         $placeholders = implode(',', $taskIds);
+
+        // Solo tareas activas en PROSPECTS
         $prospectsTaskIds = collect(
             \Illuminate\Support\Facades\DB::connection('kanboard')
                 ->select("SELECT id FROM tasks WHERE id IN ({$placeholders}) AND column_id = ? AND is_active = 1", [$prospectsColId])
-        )->pluck('id')->toArray();
+        )->pluck('id')->map(fn ($v) => (int) $v)->toArray();
 
-        $filtered = $offers->filter(fn ($o) => in_array((int) $o->kanboard_task, $prospectsTaskIds))->values();
+        if (empty($prospectsTaskIds)) {
+            return response()->json(['data' => [], 'prompt' => $prompt]);
+        }
 
-        return response()->json(['data' => $filtered]);
+        // Ficheros adjuntos de esas tareas (task_has_files de Kanboard)
+        $filesByTask = collect(
+            \Illuminate\Support\Facades\DB::connection('kanboard')
+                ->select(
+                    'SELECT id, task_id, name, path, size, is_image FROM task_has_files WHERE task_id IN ('
+                    . implode(',', $prospectsTaskIds) . ')'
+                )
+        )->groupBy('task_id');
+
+        $result = [];
+        foreach ($offers as $offer) {
+            $taskId = (int) $offer->kanboard_task;
+            if (!in_array($taskId, $prospectsTaskIds, true)) continue;
+
+            $files = $filesByTask->get($taskId);
+            if (!$files || $files->isEmpty()) continue; // solo ofertas con adjuntos
+
+            $result[] = [
+                'offer_id' => $offer->id,
+                'kanboard_task_id' => $taskId,
+                'cliente' => $offer->cliente,
+                'objeto' => $offer->objeto,
+                'importe_licitacion' => $offer->importe_licitacion,
+                'url' => $offer->url,
+                'files' => $files->map(fn ($f) => [
+                    'file_id' => (int) $f->id,
+                    'name' => $f->name,
+                    'path' => $f->path,
+                    'size' => (int) $f->size,
+                    'is_image' => (bool) $f->is_image,
+                ])->values(),
+            ];
+        }
+
+        return response()->json(['data' => $result, 'prompt' => $prompt]);
     });
 
     Route::get('go-nogo-model', function (\Illuminate\Http\Request $request) {
