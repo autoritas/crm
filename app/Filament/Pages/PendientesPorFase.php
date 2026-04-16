@@ -2,7 +2,7 @@
 
 namespace App\Filament\Pages;
 
-use App\Models\CompanyKanboardColumn;
+use App\Models\OfferWorkflow;
 use App\Models\Offer;
 use App\Models\OfferStatus;
 use Filament\Pages\Page;
@@ -34,9 +34,10 @@ class PendientesPorFase extends Page
     public function getKanboardPhases(): array
     {
         $companyId = (int) session('current_company_id', 1);
-        $phases = CompanyKanboardColumn::where('company_id', $companyId)
+        $phases = OfferWorkflow::where('company_id', $companyId)
             ->where('name', '!=', 'GANADO')
-            ->orderBy('position')
+            ->whereNotNull('kanboard_column_id')
+            ->orderBy('sort_order')
             ->pluck('name')
             ->toArray();
 
@@ -72,7 +73,8 @@ class PendientesPorFase extends Page
             ->orderBy('fecha_presentacion', 'desc')
             ->get();
 
-        $columns = CompanyKanboardColumn::where('company_id', $companyId)
+        $columns = OfferWorkflow::where('company_id', $companyId)
+            ->whereNotNull('kanboard_column_id')
             ->pluck('name', 'kanboard_column_id')
             ->toArray();
 
@@ -125,7 +127,8 @@ class PendientesPorFase extends Page
             ->whereNotNull('fecha_presentacion')
             ->get();
 
-        $columns = CompanyKanboardColumn::where('company_id', $companyId)
+        $columns = OfferWorkflow::where('company_id', $companyId)
+            ->whereNotNull('kanboard_column_id')
             ->pluck('name', 'kanboard_column_id')
             ->toArray();
 

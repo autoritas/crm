@@ -3,9 +3,9 @@
 namespace App\Filament\Pages;
 
 use App\Models\Company;
-use App\Models\CompanyKanboardColumn;
 use App\Models\Offer;
 use App\Models\OfferStatus;
+use App\Models\OfferWorkflow;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\DB;
@@ -29,7 +29,7 @@ class GoNoGo extends Page
         $pendienteId = OfferStatus::where('company_id', $companyId)
             ->where('is_default_filter', true)->value('id');
 
-        $prospectsColId = CompanyKanboardColumn::where('company_id', $companyId)
+        $prospectsColId = OfferWorkflow::where('company_id', $companyId)
             ->where('name', 'PROSPECTS')->value('kanboard_column_id');
 
         $offers = Offer::where('company_id', $companyId)

@@ -30,8 +30,9 @@ class KpiService
             ->select('id', 'kanboard_task', 'importe_licitacion')
             ->get();
 
-        // Mapeo columnas Kanboard de la empresa
-        $columns = \App\Models\CompanyKanboardColumn::where('company_id', $this->companyId)
+        // Mapeo columnas Kanboard de la empresa (desde offer_workflows)
+        $columns = \App\Models\OfferWorkflow::where('company_id', $this->companyId)
+            ->whereNotNull('kanboard_column_id')
             ->pluck('name', 'kanboard_column_id')
             ->toArray();
 

@@ -2,7 +2,7 @@
 
 namespace App\Filament\Pages;
 
-use App\Models\CompanyKanboardColumn;
+use App\Models\OfferWorkflow;
 use App\Models\Offer;
 use App\Models\OfferStatus;
 use Filament\Pages\Page;
@@ -41,7 +41,8 @@ class Indicadores extends Page
             ->get();
 
         // Obtener columna Kanboard de cada oferta
-        $columns = CompanyKanboardColumn::where('company_id', $companyId)
+        $columns = OfferWorkflow::where('company_id', $companyId)
+            ->whereNotNull('kanboard_column_id')
             ->pluck('name', 'kanboard_column_id')
             ->toArray();
 
@@ -84,9 +85,10 @@ class Indicadores extends Page
     public function getKanboardPhases(): array
     {
         $companyId = (int) session('current_company_id', 1);
-        $phases = CompanyKanboardColumn::where('company_id', $companyId)
+        $phases = OfferWorkflow::where('company_id', $companyId)
             ->where('name', '!=', 'GANADO')
-            ->orderBy('position')
+            ->whereNotNull('kanboard_column_id')
+            ->orderBy('sort_order')
             ->pluck('name')
             ->toArray();
 

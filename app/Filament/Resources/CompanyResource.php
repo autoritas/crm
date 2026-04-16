@@ -111,27 +111,31 @@ class CompanyResource extends Resource
                             ->helperText('ID del usuario asignado por defecto en Kanboard.'),
                         Forms\Components\Repeater::make('kanboardColumns')
                             ->relationship()
-                            ->label('Columnas del tablero')
+                            ->label('Fases / columnas del tablero')
+                            ->helperText('Cada fase del workflow corresponde a una columna de Kanboard.')
                             ->schema([
                                 Forms\Components\TextInput::make('kanboard_column_id')
-                                    ->label('ID Columna')
+                                    ->label('ID Columna Kanboard')
                                     ->numeric()
                                     ->required(),
                                 Forms\Components\TextInput::make('name')
                                     ->label('Nombre')
                                     ->required(),
-                                Forms\Components\TextInput::make('position')
-                                    ->label('Posicion')
+                                Forms\Components\TextInput::make('sort_order')
+                                    ->label('Orden')
                                     ->numeric()
                                     ->default(0),
+                                Forms\Components\ColorPicker::make('color')
+                                    ->label('Color'),
                                 Forms\Components\TextInput::make('description')
-                                    ->label('Descripcion'),
+                                    ->label('Descripcion')
+                                    ->columnSpanFull(),
                             ])
                             ->columns(4)
                             ->defaultItems(0)
-                            ->addActionLabel('Añadir columna')
+                            ->addActionLabel('Añadir fase')
                             ->collapsible()
-                            ->itemLabel(fn (array $state): ?string => ($state['name'] ?? '') . ' (ID: ' . ($state['kanboard_column_id'] ?? '') . ')'),
+                            ->itemLabel(fn (array $state): ?string => ($state['name'] ?? '') . ' (col: ' . ($state['kanboard_column_id'] ?? '—') . ')'),
                     ]),
 
                 Forms\Components\Section::make('APIs de IA')

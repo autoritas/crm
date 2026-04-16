@@ -42,7 +42,7 @@ Route::middleware('api.key')->prefix('flow')->group(function () {
     Route::get('go-nogo-pending', function (\Illuminate\Http\Request $request) {
         $companyId = $request->integer('company_id', 0);
 
-        $prospectsColId = \App\Models\CompanyKanboardColumn::where('company_id', $companyId)
+        $prospectsColId = \App\Models\OfferWorkflow::where('company_id', $companyId)
             ->where('name', 'PROSPECTS')->value('kanboard_column_id');
 
         if (!$prospectsColId) {

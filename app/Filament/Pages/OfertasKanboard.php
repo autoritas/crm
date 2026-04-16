@@ -23,8 +23,9 @@ use Illuminate\Support\Facades\Log;
  * y se cierra inmediatamente (se trata de backfill historico).
  *
  * Mapping fase -> columna Kanboard:
- *  - Si la fase se llama "Cerrada" -> columna GANADO.
- *  - En caso contrario: `company_kanboard_columns.position = offer_workflows.sort_order`.
+ *  - Cada fase (`offer_workflows`) guarda su propio `kanboard_column_id`.
+ *  - Si la fase se llama "Cerrada" o no tiene columna asignada, se usa
+ *    como fallback la fase con nombre GANADO de la misma empresa.
  */
 class OfertasKanboard extends Page implements HasTable
 {
@@ -133,17 +134,21 @@ class OfertasKanboard extends Page implements HasTable
             ->where('id', $workflowId)->first();
         if (!$workflow) return 'Fase no válida.';
 
-        $company = Company::with(['settings', 'kanboardColumns'])->find($offer->company_id);
+        $company = Company::with(['settings'])->find($offer->company_id);
         $projectId = $company?->settings?->kanboard_project_id;
         if (!$projectId) return 'La empresa no tiene kanboard_project_id configurado.';
 
         // Mapping fase -> columna Kanboard.
-        $column = strcasecmp($workflow->name, 'Cerrada') === 0
-            ? $company->kanboardColumns->firstWhere('name', 'GANADO')
-            : $company->kanboardColumns->firstWhere('position', $workflow->sort_order);
+        // Si la fase es "Cerrada" o no tiene kanboard_column_id, caer a GANADO.
+        $columnId = $workflow->kanboard_column_id;
+        if (strcasecmp($workflow->name, 'Cerrada') === 0 || !$columnId) {
+            $columnId = OfferWorkflow::where('company_id', $offer->company_id)
+                ->where('name', 'GANADO')
+                ->value('kanboard_column_id');
+        }
 
-        if (!$column) {
-            return "No hay columna Kanboard para la fase '{$workflow->name}' (position={$workflow->sort_order}).";
+        if (!$columnId) {
+            return "No hay columna Kanboard para la fase '{$workflow->name}'.";
         }
 
         $endpoint = 'https://kanboard.cosmos-intelligence.com/jsonrpc.php';
@@ -162,7 +167,7 @@ class OfertasKanboard extends Page implements HasTable
                 'params'  => [
                     'title'       => $offer->cliente ?: ('Oferta #' . $offer->id),
                     'project_id'  => (int) $projectId,
-                    'column_id'   => (int) $column->kanboard_column_id,
+                    'column_id'   => (int) $columnId,
                     'category_id' => $company->settings?->kanboard_default_category_id,
                     'owner_id'    => $company->settings?->kanboard_default_owner_id,
                     'description' => $offer->proyecto ?: ($offer->objeto ?: ''),

@@ -68,9 +68,13 @@ class Company extends Model
         return $this->hasMany(Competitor::class, 'company_id');
     }
 
+    /**
+     * Fases del workflow comercial ligadas a columnas Kanboard.
+     * Cada fila de offer_workflows guarda su kanboard_column_id.
+     */
     public function kanboardColumns(): HasMany
     {
-        return $this->hasMany(CompanyKanboardColumn::class, 'company_id')->orderBy('position');
+        return $this->hasMany(OfferWorkflow::class, 'company_id')->orderBy('sort_order');
     }
 
     public function apiCredentials(): HasMany
