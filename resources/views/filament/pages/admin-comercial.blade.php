@@ -43,6 +43,20 @@
             </div>
         </a>
 
+        {{-- Card: Offer Workflows (fases / columnas Kanboard) --}}
+        <a href="{{ route('filament.admin.resources.offer-workflows.index') }}"
+           class="block rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md hover:border-primary-500 dark:border-gray-700 dark:bg-gray-800">
+            <div class="flex items-center gap-4">
+                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-cyan-50 dark:bg-cyan-500/10">
+                    <x-heroicon-o-view-columns class="h-6 w-6 text-cyan-600 dark:text-cyan-400" />
+                </div>
+                <div>
+                    <h3 class="text-base font-semibold text-gray-900 dark:text-white">Estados Workflow</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Fases de oferta y columnas Kanboard asociadas</p>
+                </div>
+            </div>
+        </a>
+
         {{-- Card: Offer Types --}}
         <a href="{{ route('filament.admin.resources.offer-types.index') }}"
            class="block rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md hover:border-primary-500 dark:border-gray-700 dark:bg-gray-800">
