@@ -80,13 +80,27 @@ class PendientesPorFase extends Page
 
         $taskIds = $offers->pluck('kanboard_task')->filter()->map(fn ($v) => (int) $v)->toArray();
         $taskColumnMap = [];
+        $taskCategoryMap = [];
 
         if (!empty($taskIds)) {
             $placeholders = implode(',', $taskIds);
             $tasks = DB::connection('kanboard')
-                ->select("SELECT id, column_id FROM tasks WHERE id IN ({$placeholders})");
+                ->select("SELECT id, column_id, category_id FROM tasks WHERE id IN ({$placeholders})");
+
+            $categoryIds = array_filter(array_map(fn ($t) => (int) $t->category_id, $tasks));
+            $categoryNames = [];
+            if (!empty($categoryIds)) {
+                $catPlaceholders = implode(',', array_unique($categoryIds));
+                $cats = DB::connection('kanboard')
+                    ->select("SELECT id, name FROM project_has_categories WHERE id IN ({$catPlaceholders})");
+                foreach ($cats as $c) {
+                    $categoryNames[(int) $c->id] = $c->name;
+                }
+            }
+
             foreach ($tasks as $t) {
                 $taskColumnMap[$t->id] = $columns[$t->column_id] ?? 'SIN ASIGNAR';
+                $taskCategoryMap[$t->id] = $categoryNames[(int) $t->category_id] ?? null;
             }
         }
 
@@ -107,6 +121,7 @@ class PendientesPorFase extends Page
                 'url' => $offer->url,
                 'tipo' => $offer->offerType?->name,
                 'kb_phase' => $kbPhase,
+                'kb_category' => $taskCategoryMap[(int) $offer->kanboard_task] ?? null,
                 'codigo' => $offer->codigo_proyecto,
             ];
         }

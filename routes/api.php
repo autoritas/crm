@@ -42,63 +42,61 @@ Route::middleware('api.key')->prefix('flow')->group(function () {
     Route::get('go-nogo-pending', function (\Illuminate\Http\Request $request) {
         $companyId = $request->integer('company_id', 0);
 
+        // 1. Obtenemos el ID de la columna y el prompt
         $prospectsColId = \App\Models\OfferWorkflow::where('company_id', $companyId)
-            ->where('name', 'PROSPECTS')->value('kanboard_column_id');
+            ->where('name', 'PROSPECTS')
+            ->value('kanboard_column_id');
+
+        $prompt = \App\Models\CompanySetting::where('company_id', $companyId)
+            ->value('go_nogo_model');
 
         if (!$prospectsColId) {
-            return response()->json(['data' => [], 'prompt' => null]);
-        }
-
-        $prompt = \App\Models\CompanySetting::where('company_id', $companyId)->value('go_nogo_model');
-
-        $offers = \App\Models\Offer::where('company_id', $companyId)
-            ->where('go_nogo', 'PENDIENTE')
-            ->whereNull('ia_go_nogo')
-            ->whereNotNull('kanboard_task')
-            ->where('kanboard_task', '!=', '')
-            ->select('id', 'kanboard_task', 'cliente', 'objeto', 'importe_licitacion', 'url')
-            ->limit(20)
-            ->get();
-
-        if ($offers->isEmpty()) {
             return response()->json(['data' => [], 'prompt' => $prompt]);
         }
 
-        $taskIds = $offers->pluck('kanboard_task')->map(fn ($v) => (int) $v)->filter()->unique()->values()->toArray();
-        if (empty($taskIds)) {
+        // 2. Usamos tu SQL optimizado para obtener solo las ofertas que CUMPLEN todo
+        // Nota: Usamos JOIN para asegurar que solo traiga ofertas con tareas activas y con archivos
+        $offersData = \Illuminate\Support\Facades\DB::select("
+            SELECT 
+                o.id, 
+                o.kanboard_task, 
+                o.cliente, 
+                o.objeto, 
+                o.importe_licitacion, 
+                o.url
+            FROM offers o
+            INNER JOIN kanboard.tasks kt ON kt.id = o.kanboard_task
+            INNER JOIN kanboard.task_has_files kthf ON kt.id = kthf.task_id
+            WHERE o.company_id = ?
+            AND o.go_nogo = 'PENDIENTE'
+            AND o.ia_go_nogo IS NULL
+            AND o.id_workflow = 2
+            AND kt.column_id = ?
+            AND kt.is_active = 1
+            GROUP BY o.id
+            LIMIT 20
+        ", [$companyId, $prospectsColId]);
+
+        if (empty($offersData)) {
             return response()->json(['data' => [], 'prompt' => $prompt]);
         }
 
-        $placeholders = implode(',', $taskIds);
+        // 3. Extraemos los IDs de las tareas para traer sus archivos de una sola vez
+        $taskIds = collect($offersData)->pluck('kanboard_task')->toArray();
 
-        // Solo tareas activas en PROSPECTS
-        $prospectsTaskIds = collect(
-            \Illuminate\Support\Facades\DB::connection('kanboard')
-                ->select("SELECT id FROM tasks WHERE id IN ({$placeholders}) AND column_id = ? AND is_active = 1", [$prospectsColId])
-        )->pluck('id')->map(fn ($v) => (int) $v)->toArray();
-
-        if (empty($prospectsTaskIds)) {
-            return response()->json(['data' => [], 'prompt' => $prompt]);
-        }
-
-        // Ficheros adjuntos de esas tareas (task_has_files de Kanboard)
         $filesByTask = collect(
             \Illuminate\Support\Facades\DB::connection('kanboard')
-                ->select(
-                    'SELECT id, task_id, name, path, size, is_image FROM task_has_files WHERE task_id IN ('
-                    . implode(',', $prospectsTaskIds) . ')'
-                )
+                ->table('task_has_files')
+                ->whereIn('task_id', $taskIds)
+                ->get()
         )->groupBy('task_id');
 
-        $result = [];
-        foreach ($offers as $offer) {
+        // 4. Formateamos el resultado final
+        $result = array_map(function ($offer) use ($filesByTask) {
             $taskId = (int) $offer->kanboard_task;
-            if (!in_array($taskId, $prospectsTaskIds, true)) continue;
+            $files = $filesByTask->get($taskId) ?? collect();
 
-            $files = $filesByTask->get($taskId);
-            if (!$files || $files->isEmpty()) continue; // solo ofertas con adjuntos
-
-            $result[] = [
+            return [
                 'offer_id' => $offer->id,
                 'kanboard_task_id' => $taskId,
                 'cliente' => $offer->cliente,
@@ -113,7 +111,7 @@ Route::middleware('api.key')->prefix('flow')->group(function () {
                     'is_image' => (bool) $f->is_image,
                 ])->values(),
             ];
-        }
+        }, $offersData);
 
         return response()->json(['data' => $result, 'prompt' => $prompt]);
     });

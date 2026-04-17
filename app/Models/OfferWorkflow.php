@@ -15,6 +15,11 @@ class OfferWorkflow extends Model
         'company_id', 'name', 'color', 'sort_order',
         'kanboard_column_id', 'description',
         'closed_offer_status_id',
+        'is_go_nogo_phase',
+    ];
+
+    protected $casts = [
+        'is_go_nogo_phase' => 'bool',
     ];
 
     public function company(): BelongsTo

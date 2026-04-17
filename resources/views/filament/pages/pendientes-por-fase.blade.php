@@ -47,6 +47,7 @@
                     <thead>
                         <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
                             <th style="padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Fase</th>
+                            <th style="padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Categoria</th>
                             <th style="padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Codigo</th>
                             <th style="padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Cliente</th>
                             <th style="padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Objeto</th>
@@ -65,6 +66,15 @@
                                     <span style="font-size: 10px; font-weight: 700; color: white; background: {{ $phColor }}; padding: 2px 10px; border-radius: 10px; text-transform: uppercase; white-space: nowrap;">
                                         {{ $offer['kb_phase'] }}
                                     </span>
+                                </td>
+                                <td style="padding: 10px 14px; white-space: nowrap;">
+                                    @if(!empty($offer['kb_category']))
+                                        <span style="font-size: 10px; color: #4b5563; background: #eef2ff; padding: 2px 8px; border-radius: 8px; font-weight: 600;">
+                                            {{ $offer['kb_category'] }}
+                                        </span>
+                                    @else
+                                        <span style="color: #d1d5db; font-size: 12px;">—</span>
+                                    @endif
                                 </td>
                                 <td style="padding: 10px 14px; font-size: 12px; color: #9ca3af; font-weight: 600; white-space: nowrap;">
                                     {{ $offer['codigo'] ?? '—' }}

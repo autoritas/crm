@@ -64,6 +64,11 @@ class OfferWorkflowResource extends Resource
                     ->nullable()
                     ->helperText('Estado que adopta la oferta si la tarea Kanboard se cierra estando en esta fase. Ej: PROSPECTS -> Descartado, EN DECISION -> Perdido, GANADO -> Ganado.'),
 
+                Forms\Components\Toggle::make('is_go_nogo_phase')
+                    ->label('Fase de lectura Go/No Go')
+                    ->helperText('Si se activa, las ofertas en esta fase se envian al flujo de n8n para analisis Go/No Go. Solo una fase por empresa deberia tenerlo activo.')
+                    ->default(false),
+
                 Forms\Components\TextInput::make('sort_order')
                     ->label('Orden')
                     ->numeric()
@@ -115,6 +120,10 @@ class OfferWorkflowResource extends Resource
                 Tables\Columns\TextColumn::make('closedOfferStatus.status')
                     ->label('Estado al cerrar')
                     ->placeholder('—'),
+
+                Tables\Columns\IconColumn::make('is_go_nogo_phase')
+                    ->label('Go/No Go')
+                    ->boolean(),
 
                 Tables\Columns\ColorColumn::make('color')
                     ->label('Color'),
