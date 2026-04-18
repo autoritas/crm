@@ -15,3 +15,11 @@ Schedule::command('kanboard:sync-workflows')
     ->everyFiveMinutes()
     ->withoutOverlapping()
     ->runInBackground();
+
+// Descarga pliegos desde la plataforma (PLACSP, PSCP...) y los adjunta a
+// la tarea Kanboard de cada oferta. Sin esto la IA no puede analizar Go/No Go.
+// Se limita al lote de ofertas que AUN no tienen pliegos adjuntados.
+Schedule::command('offers:sync-documents --pending-only --limit=25')
+    ->everyTenMinutes()
+    ->withoutOverlapping(20) // bloquea 20 min por si una oferta es lenta
+    ->runInBackground();

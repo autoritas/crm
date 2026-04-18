@@ -584,6 +584,19 @@ class CribadoController extends Controller
                         'params' => [$taskId, $lead->url, 'is_a_dependency'],
                     ]);
             }
+
+            // Best-effort: dispara la descarga de pliegos y su subida a la
+            // tarea Kanboard recien creada. Si falla (cert no configurado,
+            // plataforma caida, etc.) no rompemos el cribado: el scheduler
+            // `offers:sync-documents --pending-only` lo reintenta cada 10 min.
+            try {
+                app(\App\Actions\SyncOfferDocumentsAction::class)->run($offer->fresh());
+            } catch (\Throwable $e) {
+                Log::warning('Cribado: sync de pliegos fallo (reintentara el scheduler)', [
+                    'offer_id' => $offer->id,
+                    'error'    => $e->getMessage(),
+                ]);
+            }
         } catch (\Throwable $e) {
             Log::error('Kanboard task creation failed: ' . $e->getMessage());
         }
