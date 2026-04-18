@@ -112,6 +112,82 @@ class Cribado extends Page
         Notification::make()->title($result['message'])->success()->send();
     }
 
+    /**
+     * Accion unitaria "pulgar arriba = ofertar" / "pulgar abajo = descartar".
+     *
+     * @param  int     $id        id del InfonaliaData
+     * @param  string  $direction 'ofertar' | 'descartar'
+     * @param  ?int    $reasonId  obligatorio si el controller lo pide
+     * @param  ?string $comment
+     */
+    public function decide(int $id, string $direction, ?int $reasonId = null, ?string $comment = null): void
+    {
+        try {
+            $result = $this->controller()->decide($id, $direction, $reasonId, $comment);
+        } catch (\Throwable $e) {
+            Notification::make()->title('Error')->body($e->getMessage())->danger()->send();
+            return;
+        }
+
+        $type = $result['status'] === 'offer_created' ? 'success' : ($result['status'] === 'discarded' ? 'warning' : 'info');
+        Notification::make()->title($result['message'])->{$type}()->send();
+    }
+
+    /**
+     * Version masiva del pulgar. Aplica `direction` a todos los seleccionados.
+     * Si alguno requiere motivo y no se pasa, el controller avisa y el
+     * frontend abrira el modal de motivo con el conteo.
+     */
+    public function bulkDecide(string $direction, ?int $reasonId = null, ?string $comment = null): void
+    {
+        if (empty($this->selectedItems)) {
+            Notification::make()->title('No hay items seleccionados')->warning()->send();
+            return;
+        }
+
+        try {
+            $result = $this->controller()->bulkDecide($this->selectedItems, $direction, $reasonId, $comment);
+        } catch (\Throwable $e) {
+            Notification::make()->title('Error')->body($e->getMessage())->danger()->send();
+            return;
+        }
+
+        if ($result['status'] === 'needs_reason') {
+            // Emite un evento que el frontend captura para abrir el modal.
+            $this->dispatch('bulk-needs-reason',
+                direction: $direction,
+                count: $result['reason_needed_count'],
+            );
+            return;
+        }
+
+        $this->selectedItems = [];
+        $type = $direction === 'ofertar' ? 'success' : 'warning';
+        Notification::make()->title($result['message'])->{$type}()->send();
+    }
+
+    /**
+     * Mapa id_ia_decision → 'ofertar' | 'descartar' | 'revision' para que
+     * el frontend sepa cuando pedir motivo sin ir al servidor.
+     */
+    public function getIaDirectionMap(): array
+    {
+        $companyId = (int) session('current_company_id', 1);
+        $statuses = InfonaliaStatus::where('company_id', $companyId)->get();
+
+        $map = [];
+        foreach ($statuses as $s) {
+            if (\App\Http\Controllers\CribadoController::isReviewStatus($s->status)) {
+                $map[$s->id] = 'revision';
+            } elseif ($s->generates_offer) {
+                $map[$s->id] = 'ofertar';
+            } else {
+                $map[$s->id] = 'descartar';
+            }
+        }
+        return $map;
+    }
+
     public function getStatusOptions(): array
     {
         $companyId = (int) session('current_company_id', 1);

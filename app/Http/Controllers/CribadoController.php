@@ -8,6 +8,7 @@ use App\Models\InfonaliaStatus;
 use App\Models\Offer;
 use App\Models\OfferStatus;
 use App\Models\OfferType;
+use App\Models\OfferWorkflow;
 use App\Models\ScreeningReason;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -206,6 +207,192 @@ class CribadoController extends Controller
     }
 
     /**
+     * Nuevo modelo (pulgar arriba / pulgar abajo):
+     *  - direction = 'ofertar'   → mueve el lead al status `generates_offer=true`
+     *  - direction = 'descartar' → mueve al status `is_default_discard=true`
+     *
+     * Regla de motivo:
+     *  - Si la IA habia decidido lo mismo (y no era Revision/Dudoso) → sin motivo.
+     *  - Si la IA habia decidido lo contrario → motivo obligatorio.
+     *  - Si la IA estaba en Revision/Dudoso → motivo obligatorio SIEMPRE
+     *    (por eso estaba en duda, queremos aprender del humano).
+     *
+     * Cuando se guarda motivo, se propaga al contexto de la empresa en la
+     * seccion positivos (direction=ofertar) o negativos (direction=descartar).
+     *
+     * @return array{status:string, message:string, requires_reason:bool}
+     */
+    public function decide(int $id, string $direction, ?int $reasonId = null, ?string $comment = null): array
+    {
+        if (! in_array($direction, ['ofertar', 'descartar'], true)) {
+            throw new \InvalidArgumentException("direction debe ser 'ofertar' o 'descartar'");
+        }
+
+        $record = InfonaliaData::findOrFail($id);
+        $iaStatus = $record->iaDecision;
+
+        $targetStatusId = $this->resolveTargetStatusId($record->company_id, $direction);
+        if (! $targetStatusId) {
+            throw new \RuntimeException(
+                "No hay status '{$direction}' configurado para la empresa {$record->company_id}"
+            );
+        }
+
+        $needsReason = $this->requiresReasonForDecision($iaStatus, $direction);
+        if ($needsReason && ! $reasonId) {
+            return [
+                'status' => 'needs_reason',
+                'message' => 'Motivo obligatorio: ' .
+                    (self::isReviewStatus($iaStatus?->status ?? null)
+                        ? 'la IA lo marco como revision manual'
+                        : 'cambias la decision de la IA'),
+                'requires_reason' => true,
+            ];
+        }
+
+        $record->update([
+            'id_decision'         => $targetStatusId,
+            'revisado_humano'     => true,
+            'revisado_fecha'      => now(),
+            'id_screening_reason' => $reasonId,
+            'screening_comment'   => $comment,
+        ]);
+
+        // Contexto empresa: solo cuando hay motivo (coincide con needsReason).
+        if ($reasonId) {
+            $reason = ScreeningReason::find($reasonId);
+            if ($reason) {
+                $type = $direction === 'ofertar' ? 'positive' : 'negative';
+                $this->appendToCompanyContext(
+                    $record->company_id,
+                    $type,
+                    $reason->reason,
+                    $comment,
+                    $record->cliente
+                );
+            }
+        }
+
+        if ($direction === 'ofertar') {
+            $this->createOfferAndKanboardTask($record);
+            return [
+                'status' => 'offer_created',
+                'message' => 'Enviado a Ofertar → oferta creada en Kanboard',
+                'requires_reason' => false,
+            ];
+        }
+
+        return [
+            'status' => 'discarded',
+            'message' => 'Descartado',
+            'requires_reason' => false,
+        ];
+    }
+
+    /**
+     * Version masiva de decide(). Aplica el mismo motivo (si procede) a todos
+     * los IDs. Si alguno requiere motivo y no se pasa, devuelve needs_reason
+     * con la cuenta de los que lo requieren para que el frontend pida uno.
+     *
+     * @param  int[]  $ids
+     * @return array{status:string, message:string, count:int, requires_reason:bool, reason_needed_count:int}
+     */
+    public function bulkDecide(array $ids, string $direction, ?int $reasonId = null, ?string $comment = null): array
+    {
+        if (! in_array($direction, ['ofertar', 'descartar'], true)) {
+            throw new \InvalidArgumentException("direction debe ser 'ofertar' o 'descartar'");
+        }
+        if (empty($ids)) {
+            return ['status' => 'empty', 'message' => 'Sin seleccion', 'count' => 0,
+                    'requires_reason' => false, 'reason_needed_count' => 0];
+        }
+
+        // Preparacion: cuenta cuantos de los seleccionados necesitan motivo.
+        $records = InfonaliaData::with('iaDecision')->whereIn('id', $ids)->get();
+
+        $reasonNeededCount = 0;
+        foreach ($records as $r) {
+            if ($this->requiresReasonForDecision($r->iaDecision, $direction)) {
+                $reasonNeededCount++;
+            }
+        }
+
+        if ($reasonNeededCount > 0 && ! $reasonId) {
+            return [
+                'status' => 'needs_reason',
+                'message' => "De los {$records->count()} seleccionados, {$reasonNeededCount} requieren motivo",
+                'count' => 0,
+                'requires_reason' => true,
+                'reason_needed_count' => $reasonNeededCount,
+            ];
+        }
+
+        $count = 0;
+        foreach ($records as $r) {
+            $applyReasonId = $this->requiresReasonForDecision($r->iaDecision, $direction) ? $reasonId : null;
+            $applyComment  = $this->requiresReasonForDecision($r->iaDecision, $direction) ? $comment  : null;
+
+            try {
+                $this->decide($r->id, $direction, $applyReasonId, $applyComment);
+                $count++;
+            } catch (\Throwable $e) {
+                Log::error('bulkDecide: fallo en lead', [
+                    'id' => $r->id, 'direction' => $direction, 'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return [
+            'status' => $direction === 'ofertar' ? 'offer_created' : 'discarded',
+            'message' => ($direction === 'ofertar' ? 'Enviados a Ofertar' : 'Descartados') . ": {$count}",
+            'count' => $count,
+            'requires_reason' => false,
+            'reason_needed_count' => $reasonNeededCount,
+        ];
+    }
+
+    /**
+     * Resuelve el status_id destino para una direccion ('ofertar'|'descartar').
+     */
+    private function resolveTargetStatusId(int $companyId, string $direction): ?int
+    {
+        $column = $direction === 'ofertar' ? 'generates_offer' : 'is_default_discard';
+
+        $id = InfonaliaStatus::where('company_id', $companyId)
+            ->where($column, true)
+            ->value('id');
+
+        // Fallback para 'descartar' si no hay ninguno marcado: el primero
+        // que no sea filter, ni genera oferta, ni revision.
+        if (! $id && $direction === 'descartar') {
+            $candidate = InfonaliaStatus::where('company_id', $companyId)
+                ->where('is_default_filter', false)
+                ->where('generates_offer', false)
+                ->get()
+                ->first(fn ($s) => ! self::isReviewStatus($s->status));
+            return $candidate?->id;
+        }
+
+        return $id ? (int) $id : null;
+    }
+
+    /**
+     * Regla nueva de requerimiento de motivo:
+     *  - IA en Revision/Dudoso → siempre motivo.
+     *  - Humano decide lo mismo que IA → sin motivo.
+     *  - Humano decide distinto de IA → motivo.
+     */
+    private function requiresReasonForDecision(?InfonaliaStatus $iaStatus, string $direction): bool
+    {
+        if (! $iaStatus) return true; // sin decision IA, mejor pedir motivo.
+
+        if (self::isReviewStatus($iaStatus->status)) return true;
+
+        $iaDirection = $iaStatus->generates_offer ? 'ofertar' : 'descartar';
+        return $iaDirection !== $direction;
+    }
+
+    /**
      * Determina si la transicion requiere feedback en el contexto.
      *  - generates_offer (Ofertar/Focus) → 'positive'
      *  - Pendiente / Dudoso / Revisión * → null (no requiere motivo)
@@ -315,6 +502,12 @@ class CribadoController extends Controller
         $defaultType = OfferType::where('company_id', $companyId)
             ->where('name', 'Concurso')->first();
 
+        // Fase inicial del workflow: PROSPECTS. Sin esto la oferta queda
+        // huerfana de fase y la sincronizacion con Kanboard no puede
+        // reconciliar cambios de columna ni cierres de tarea.
+        $prospectsWorkflow = OfferWorkflow::where('company_id', $companyId)
+            ->where('name', 'PROSPECTS')->first();
+
         $offer = Offer::create([
             'company_id' => $companyId,
             'id_infonalia_data' => $lead->id,
@@ -328,6 +521,7 @@ class CribadoController extends Controller
             'url' => $lead->url,
             'id_offer_status' => $defaultStatus?->id,
             'id_offer_type' => $defaultType?->id,
+            'id_workflow' => $prospectsWorkflow?->id,
             'sector' => 'Público',
         ]);
 

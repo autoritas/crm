@@ -19,6 +19,7 @@ class InfonaliaStatus extends Model
         'color',
         'generates_offer',
         'is_default_filter',
+        'is_default_discard',
     ];
 
     protected function casts(): array
@@ -26,6 +27,7 @@ class InfonaliaStatus extends Model
         return [
             'generates_offer' => 'boolean',
             'is_default_filter' => 'boolean',
+            'is_default_discard' => 'boolean',
         ];
     }
 

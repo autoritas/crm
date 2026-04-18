@@ -69,4 +69,9 @@ class Offer extends Model
     {
         return $this->hasMany(OfferCompetitor::class, 'id_offer');
     }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(OfferDocument::class, 'offer_id');
+    }
 }

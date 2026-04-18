@@ -45,4 +45,12 @@ return [
         'app_id' => (int) env('STOCKFLOW_APP_ID', 10),
     ],
 
+    // Certificado digital para PLACSP / plataformas agregadas.
+    // El fichero .p12 debe estar fuera de /public/ (usar storage/app/certs/).
+    // La password se lee de .env y NUNCA se committea.
+    'placsp' => [
+        'cert_path'     => env('PLACSP_CERT_PATH', storage_path('app/certs/placsp.p12')),
+        'cert_password' => env('PLACSP_CERT_PASSWORD'),
+    ],
+
 ];

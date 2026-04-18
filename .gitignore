@@ -7,6 +7,10 @@
 /public/icon.svg
 /storage/*.key
 /storage/pail
+# Certificados digitales (PLACSP y similares) - siempre fuera del repo
+/storage/app/certs/
+*.p12
+*.pem
 /vendor
 .env
 .env.backup
