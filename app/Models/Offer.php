@@ -33,6 +33,8 @@ class Offer extends Model
         'provincia', 'url', 'notas',
         // Go/NoGo
         'go_nogo', 'ia_go_nogo', 'ia_go_nogo_analysis', 'ia_go_nogo_date',
+        // IA
+        'offer_resources',
     ];
 
     protected function casts(): array

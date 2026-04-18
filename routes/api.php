@@ -110,10 +110,11 @@ Route::middleware('api.key')->prefix('flow')->group(function () {
                     'size' => (int) $f->size,
                     'is_image' => (bool) $f->is_image,
                 ])->values(),
+                'prompt' => $prompt,
             ];
         }, $offersData);
 
-        return response()->json(['data' => $result, 'prompt' => $prompt]);
+        return response()->json(['data' => $result]);
     });
 
     Route::get('go-nogo-model', function (\Illuminate\Http\Request $request) {
