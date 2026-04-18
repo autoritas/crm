@@ -32,7 +32,10 @@ class AdminPanelProvider extends PanelProvider
             // de Laravel (ruta con nombre 'login') en vez de su pagina propia.
             ->brandName('CRM')
             ->brandLogo(fn () => view('filament.components.brand-logo'))
-            ->favicon(asset('icon.svg'))
+            // Cache-buster dinamico: el navegador cachea el favicon muy
+            // agresivamente, asi que forzamos una URL distinta cada vez que
+            // cambia el fichero usando su mtime como version.
+            ->favicon(asset('icon.svg') . '?v=' . (@filemtime(public_path('icon.svg')) ?: time()))
             ->colors([
                 'primary' => Color::Blue,
             ])

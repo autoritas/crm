@@ -19,7 +19,9 @@
         <meta name="viewport" content="width=device-width, initial-scale=1" />
 
         @if ($favicon = filament()->getFavicon())
-            <link rel="icon" href="{{ $favicon }}" />
+            {{-- type="image/svg+xml" impide que los navegadores pidan /favicon.ico por su cuenta --}}
+            <link rel="icon" type="image/svg+xml" href="{{ $favicon }}" />
+            <link rel="shortcut icon" type="image/svg+xml" href="{{ $favicon }}" />
         @endif
 
         @php
