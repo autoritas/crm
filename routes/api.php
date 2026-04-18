@@ -128,11 +128,13 @@ Route::middleware('api.key')->prefix('flow')->group(function () {
             'offer_id' => 'required|exists:offers,id',
             'ia_go_nogo' => 'required|in:GO,GO_TACTICO,NO_GO',
             'ia_analysis' => 'required|string',
+            'offer_resources' => 'required|string',
         ]);
         $offer = \App\Models\Offer::findOrFail($request->offer_id);
         $offer->update([
             'ia_go_nogo' => $request->ia_go_nogo,
             'ia_go_nogo_analysis' => $request->ia_analysis,
+            'offer_resources' => $request->offer_resources,
             'ia_go_nogo_date' => now(),
         ]);
 

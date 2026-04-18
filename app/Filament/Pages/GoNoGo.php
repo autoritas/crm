@@ -18,11 +18,48 @@ class GoNoGo extends Page
     protected static ?string $navigationIcon = 'heroicon-o-shield-check';
     protected static ?string $navigationLabel = 'Go / No Go';
     protected static ?string $title = 'Go / No Go';
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 1;
 
     protected static string $view = 'filament.pages.go-nogo';
 
     public function getProspectsOffers(): array
+    {
+        return $this->getProspectsOfferModels()
+            ->map(fn (Offer $o) => $this->formatOffer($o))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Agrupa las ofertas por la recomendacion IA para la UI.
+     * Claves del array: 'GO', 'GO_TACTICO', 'NO_GO', 'PENDIENTE'.
+     * Cada valor es un array de ofertas ya formateadas.
+     */
+    public function getGroupedProspectsOffers(): array
+    {
+        $buckets = [
+            'GO'         => [],
+            'GO_TACTICO' => [],
+            'NO_GO'      => [],
+            'PENDIENTE'  => [],
+        ];
+
+        foreach ($this->getProspectsOfferModels() as $offer) {
+            $key = in_array($offer->ia_go_nogo, ['GO', 'GO_TACTICO', 'NO_GO'], true)
+                ? $offer->ia_go_nogo
+                : 'PENDIENTE';
+            $buckets[$key][] = $this->formatOffer($offer);
+        }
+
+        return $buckets;
+    }
+
+    /**
+     * Carga los Offer Eloquent que viven en PROSPECTS + PENDIENTE y cuya
+     * tarea Kanboard sigue en la columna PROSPECTS. Reusado por el listado
+     * y por las acciones masivas.
+     */
+    private function getProspectsOfferModels(): \Illuminate\Support\Collection
     {
         $companyId = (int) session('current_company_id', 1);
 
@@ -39,25 +76,21 @@ class GoNoGo extends Page
             ->orderByDesc('created_at')
             ->get();
 
-        // Filtrar solo las que están en PROSPECTS en Kanboard
-        $taskIds = $offers->pluck('kanboard_task')->filter()->map(fn ($v) => (int) $v)->filter()->toArray();
-        $prospectsTaskIds = [];
-
-        if (!empty($taskIds) && $prospectsColId) {
-            $placeholders = implode(',', $taskIds);
-            $tasks = DB::connection('kanboard')
-                ->select("SELECT id, column_id FROM tasks WHERE id IN ({$placeholders}) AND column_id = ?", [$prospectsColId]);
-            $prospectsTaskIds = collect($tasks)->pluck('id')->toArray();
+        if ($offers->isEmpty() || ! $prospectsColId) {
+            return collect();
         }
 
-        // Solo PROSPECTS - no incluir las sin kanboard_task
-        $result = [];
-        foreach ($offers as $offer) {
-            if (!in_array((int) $offer->kanboard_task, $prospectsTaskIds)) continue;
-            $result[] = $this->formatOffer($offer);
-        }
+        $taskIds = $offers->pluck('kanboard_task')->filter()->map(fn ($v) => (int) $v)->all();
+        if (empty($taskIds)) return collect();
 
-        return $result;
+        $placeholders = implode(',', $taskIds);
+        $tasks = DB::connection('kanboard')
+            ->select("SELECT id FROM tasks WHERE id IN ({$placeholders}) AND column_id = ?", [$prospectsColId]);
+        $prospectsTaskIds = collect($tasks)->pluck('id')->map(fn ($v) => (int) $v)->all();
+
+        return $offers
+            ->filter(fn (Offer $o) => in_array((int) $o->kanboard_task, $prospectsTaskIds, true))
+            ->values();
     }
 
     private function formatOffer(Offer $offer): array
@@ -121,6 +154,93 @@ class GoNoGo extends Page
         $this->closeKanboardTask($offer);
 
         Notification::make()->title('NO GO — Oferta descartada, tarea cerrada en Kanboard')->danger()->send();
+    }
+
+    /**
+     * Aplica masivamente la decision dada a todas las ofertas cuya recomendacion
+     * IA coincida. Pensado para "estoy de acuerdo con toda la seccion".
+     *
+     * @param  string $iaDecision  'GO' | 'GO_TACTICO' | 'NO_GO'
+     */
+    public function bulkAcceptIaSection(string $iaDecision): void
+    {
+        if (! in_array($iaDecision, ['GO', 'GO_TACTICO', 'NO_GO'], true)) {
+            Notification::make()->title('Seccion no valida')->danger()->send();
+            return;
+        }
+
+        $offers = $this->getProspectsOfferModels()
+            ->filter(fn (Offer $o) => $o->ia_go_nogo === $iaDecision);
+
+        if ($offers->isEmpty()) {
+            Notification::make()->title('No hay ofertas en esta seccion')->warning()->send();
+            return;
+        }
+
+        $ok = 0;
+        $fail = 0;
+        $errors = [];
+
+        if ($iaDecision === 'NO_GO') {
+            // Para NO_GO: cambiar estado a "descartado" + cerrar tarea Kanboard.
+            $companyId = $offers->first()->company_id;
+            $discardStatusId = OfferStatus::where('company_id', $companyId)
+                ->where('is_default_discard', true)->value('id');
+
+            foreach ($offers as $offer) {
+                try {
+                    $offer->update([
+                        'go_nogo'         => 'NO_GO',
+                        'id_offer_status' => $discardStatusId ?? $offer->id_offer_status,
+                    ]);
+                    $this->closeKanboardTask($offer);
+                    $ok++;
+                } catch (\Throwable $e) {
+                    $fail++;
+                    $errors[] = "Oferta #{$offer->id}: " . $e->getMessage();
+                    Log::error('bulkAcceptIaSection NO_GO failed', [
+                        'offer_id' => $offer->id, 'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        } else {
+            // GO o GO_TACTICO: mover a OFERTAR en Kanboard.
+            foreach ($offers as $offer) {
+                try {
+                    $offer->update(['go_nogo' => $iaDecision]);
+                    $error = $this->moveKanboardTask($offer, 'OFERTAR');
+                    if ($error) {
+                        $fail++;
+                        $errors[] = "Oferta #{$offer->id}: {$error}";
+                    } else {
+                        $ok++;
+                    }
+                } catch (\Throwable $e) {
+                    $fail++;
+                    $errors[] = "Oferta #{$offer->id}: " . $e->getMessage();
+                    Log::error('bulkAcceptIaSection ' . $iaDecision . ' failed', [
+                        'offer_id' => $offer->id, 'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
+        $label = match ($iaDecision) {
+            'GO'         => 'GO',
+            'GO_TACTICO' => 'GO TACTICO',
+            'NO_GO'      => 'NO GO',
+        };
+
+        if ($fail === 0) {
+            Notification::make()
+                ->title("Aplicado {$label} a {$ok} ofertas")
+                ->success()->send();
+        } else {
+            Notification::make()
+                ->title("Aplicado {$label}: {$ok} OK, {$fail} fallidas")
+                ->body(implode("\n", array_slice($errors, 0, 5)))
+                ->warning()->persistent()->send();
+        }
     }
 
     /**

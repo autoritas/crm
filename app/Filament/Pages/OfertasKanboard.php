@@ -24,8 +24,9 @@ use Illuminate\Support\Facades\Log;
  *
  * Mapping fase -> columna Kanboard:
  *  - Cada fase (`offer_workflows`) guarda su propio `kanboard_column_id`.
- *  - Si la fase se llama "Cerrada" o no tiene columna asignada, se usa
- *    como fallback la fase con nombre GANADO de la misma empresa.
+ *  - Si la fase no tiene columna asignada, se usa como fallback la fase
+ *    con nombre GANADO de la misma empresa. "Cerrado" es un estado de la
+ *    tarea Kanboard, no una fase del workflow.
  */
 class OfertasKanboard extends Page implements HasTable
 {
@@ -82,7 +83,7 @@ class OfertasKanboard extends Page implements HasTable
                             ->options($this->workflowOptions($record->company_id))
                             ->default($this->defaultWorkflowId($record->company_id))
                             ->required()
-                            ->helperText('La tarea se creara en la columna correspondiente a la fase y se cerrara. "Cerrada" va a la columna GANADO.'),
+                            ->helperText('La tarea se creara en la columna correspondiente a la fase y se cerrara inmediatamente (backfill historico).'),
                     ])
                     ->action(function (Offer $record, array $data) {
                         $error = $this->createKanboardTask($record, (int) $data['workflow_id']);
@@ -109,16 +110,10 @@ class OfertasKanboard extends Page implements HasTable
     }
 
     /**
-     * Fase por defecto del select: "Cerrada" si existe, si no la ultima.
+     * Fase por defecto del select: la ultima del workflow (tipicamente GANADO).
      */
     private function defaultWorkflowId(int $companyId): ?int
     {
-        $cerrada = OfferWorkflow::where('company_id', $companyId)
-            ->whereRaw('LOWER(name) = ?', ['cerrada'])
-            ->value('id');
-
-        if ($cerrada) return (int) $cerrada;
-
         return (int) OfferWorkflow::where('company_id', $companyId)
             ->orderByDesc('sort_order')
             ->value('id');
@@ -139,9 +134,9 @@ class OfertasKanboard extends Page implements HasTable
         if (!$projectId) return 'La empresa no tiene kanboard_project_id configurado.';
 
         // Mapping fase -> columna Kanboard.
-        // Si la fase es "Cerrada" o no tiene kanboard_column_id, caer a GANADO.
+        // Si la fase no tiene kanboard_column_id asignada, caer a GANADO.
         $columnId = $workflow->kanboard_column_id;
-        if (strcasecmp($workflow->name, 'Cerrada') === 0 || !$columnId) {
+        if (!$columnId) {
             $columnId = OfferWorkflow::where('company_id', $offer->company_id)
                 ->where('name', 'GANADO')
                 ->value('kanboard_column_id');

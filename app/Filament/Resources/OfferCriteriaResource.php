@@ -24,7 +24,7 @@ class OfferCriteriaResource extends Resource
     protected static ?string $navigationLabel = 'Criterios';
     protected static ?string $modelLabel = 'Criterios Oferta';
     protected static ?string $pluralModelLabel = 'Criterios';
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 4;
     protected static ?string $slug = 'offer-criteria';
 
     protected static function getCompanyId(): int

@@ -24,7 +24,7 @@ class OfferCompetitorResource extends Resource
     protected static ?string $navigationLabel = 'Competidores';
     protected static ?string $modelLabel = 'Competidor en Oferta';
     protected static ?string $pluralModelLabel = 'Competidores';
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 5;
 
     protected static function getCompanyId(): int
     {
