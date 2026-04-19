@@ -52,7 +52,7 @@ class PLACSPWebProvider implements TenderSourceProvider
 
     public function supports(string $tenderUrl): bool
     {
-        if (! $this->hasCredentials()) return false;
+        if (! $this->hasCredentials() && ! $this->hasCookie()) return false;
         $host = parse_url($tenderUrl, PHP_URL_HOST) ?: '';
         return in_array(strtolower($host), self::SUPPORTED_HOSTS, true);
     }
@@ -67,7 +67,13 @@ class PLACSPWebProvider implements TenderSourceProvider
         $jar    = new CookieJar();
         $client = $this->makeClient($jar);
 
-        $this->login($client, $jar);
+        // Camino rapido: si hay PLACSP_COOKIE, cargamos la sesion directamente.
+        // Si no, intentamos login con user/password (heuristica, puede fallar).
+        if ($this->hasCookie()) {
+            $this->loadCookieFromConfig($jar);
+        } else {
+            $this->login($client, $jar);
+        }
 
         $html  = $this->fetchDetailPage($client, $url);
         $links = $this->extractDocumentLinks($html, $url);
@@ -99,6 +105,55 @@ class PLACSPWebProvider implements TenderSourceProvider
     {
         return (bool) config('services.placsp.user')
             && (bool) config('services.placsp.password');
+    }
+
+    private function hasCookie(): bool
+    {
+        return $this->resolveCookieString() !== '';
+    }
+
+    /**
+     * Obtiene la cookie desde PLACSP_COOKIE o, si esta vacia, desde el
+     * fichero PLACSP_COOKIE_FILE. Esto permite meter cookies muy largas
+     * sin pelearse con el parser de phpdotenv.
+     */
+    private function resolveCookieString(): string
+    {
+        $inline = (string) config('services.placsp.cookie');
+        if ($inline !== '') return trim($inline);
+
+        $path = (string) config('services.placsp.cookie_file');
+        if ($path !== '' && is_file($path) && is_readable($path)) {
+            $contents = trim(file_get_contents($path) ?: '');
+            return $contents;
+        }
+        return '';
+    }
+
+    /**
+     * Parsea la cookie cruda (`name1=val1; name2=val2; ...`) y la mete en
+     * la CookieJar asociada al dominio de PLACSP.
+     */
+    private function loadCookieFromConfig(CookieJar $jar): void
+    {
+        $raw = $this->resolveCookieString();
+        foreach (explode(';', $raw) as $pair) {
+            $pair = trim($pair);
+            if ($pair === '') continue;
+            [$name, $value] = array_pad(explode('=', $pair, 2), 2, '');
+            $name = trim($name);
+            $value = trim($value);
+            if ($name === '') continue;
+
+            $jar->setCookie(new \GuzzleHttp\Cookie\SetCookie([
+                'Name'     => $name,
+                'Value'    => $value,
+                'Domain'   => 'contrataciondelestado.es',
+                'Path'     => '/',
+                'Secure'   => true,
+                'HttpOnly' => false,
+            ]));
+        }
     }
 
     private function makeClient(CookieJar $jar): Client

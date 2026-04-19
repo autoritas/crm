@@ -26,14 +26,22 @@ class PlacspWebTestCommand extends Command
         $this->info('PLACSP web test (user/password)');
         $this->line(str_repeat('-', 60));
 
-        $user = config('services.placsp.user');
-        $pass = config('services.placsp.password');
+        $user   = config('services.placsp.user');
+        $pass   = config('services.placsp.password');
+        $cookie = config('services.placsp.cookie');
         $this->line('  PLACSP_USER:     ' . ($user ?: '(vacio)'));
         $this->line('  PLACSP_PASSWORD: ' . ($pass ? '(definida, ' . strlen($pass) . ' chars)' : '(vacia)'));
+        $this->line('  PLACSP_COOKIE:   ' . ($cookie ? '(definida, ' . strlen($cookie) . ' chars)' : '(vacia)'));
 
-        if (! $user || ! $pass) {
-            $this->error('  → Faltan PLACSP_USER y/o PLACSP_PASSWORD en .env');
+        if (! $cookie && (! $user || ! $pass)) {
+            $this->error('  → Define PLACSP_COOKIE o bien PLACSP_USER + PLACSP_PASSWORD en .env');
             return self::FAILURE;
+        }
+
+        if ($cookie) {
+            $this->line('  modo:            cookie (atajo rapido)');
+        } else {
+            $this->line('  modo:            login automatico (user/password)');
         }
 
         $offerId = $this->option('offer');

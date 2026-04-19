@@ -57,6 +57,17 @@ return [
         // el cert autorizado). NUNCA committear estas credenciales.
         'user'     => env('PLACSP_USER'),
         'password' => env('PLACSP_PASSWORD'),
+
+        // Atajo: cookie de sesion copiada manualmente desde el navegador
+        // logueado ("Cookie: name=val; name=val"). Si esta definida,
+        // saltamos el login y usamos estas cookies directamente.
+        //
+        // Dos formas de configurarla (la primera que encuentre se usa):
+        //   a) PLACSP_COOKIE='...'             (en .env)
+        //   b) PLACSP_COOKIE_FILE=/ruta/fichero  (recomendado para cookies
+        //      largas con caracteres +/=; que phpdotenv no traga bien)
+        'cookie'      => env('PLACSP_COOKIE'),
+        'cookie_file' => env('PLACSP_COOKIE_FILE'),
     ],
 
 ];
