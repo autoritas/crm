@@ -43,7 +43,10 @@ class PLACSPWebProvider implements TenderSourceProvider
     ];
 
     private const USER_AGENT         = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-    private const HOME_URL           = 'https://contrataciondelestado.es/wps/portal/plataforma';
+    // La home publica `/wps/portal/plataforma` no trae login.
+    // `/wps/portal/plataforma/empresas` SI tiene el formulario de login
+    // del "Operador Economico" (usuario+password, sin cert).
+    private const HOME_URL           = 'https://contrataciondelestado.es/wps/portal/plataforma/empresas';
     private const MAX_BYTES_PER_FILE = 50 * 1024 * 1024; // 50 MB
     private const HTTP_TIMEOUT       = 45;
 
@@ -178,12 +181,21 @@ class PLACSPWebProvider implements TenderSourceProvider
     }
 
     /**
-     * Login heuristico:
-     *   1. GET home para obtener JSESSIONID y el HTML que contiene el form.
-     *   2. Busca el primer <form> con un input type=password.
-     *   3. Serializa todos los inputs del form, mete user/password por nombres
-     *      tipicos y hace POST.
-     *   4. Verifica que estamos logueados revisando cookies y/o HTML.
+     * Login contra WebSphere Portal de PLACSP.
+     *
+     * Flujo real (capturado en Chrome):
+     *   POST /wps/portal/plataforma/empresas/.../Eaction!wps.portlets.login==/
+     *     → 302 /wps/myportal/!ut/p/z1/0wcA1NLTeQ!!/
+     *     → 302 /wps/myportal/plataforma/inicio/!ut/p/z1/...
+     *
+     * El cambio de `/wps/portal/` a `/wps/myportal/` en la URL final es el
+     * marcador mas fiable de "estoy logueado". Tambien vale la presencia de
+     * `portalLogoutLink` o textos tipo "Finalizar sesion" / "Operador Economico"
+     * en el HTML.
+     *
+     * Mandamos headers de navegador (Origin, Sec-Fetch-*) porque sin ellos
+     * PLACSP ignora silenciosamente el POST y reescribe la misma pagina de
+     * login sin error visible.
      */
     private function login(Client $client, CookieJar $jar): void
     {
@@ -205,32 +217,53 @@ class PLACSPWebProvider implements TenderSourceProvider
             );
         }
 
-        // Mete user/pass en los campos detectados.
         $fields                  = $form['fields'];
         $fields[$form['user']]   = $user;
         $fields[$form['pass']]   = $pass;
 
         $action = $this->absolutize($form['action'], $homeUri);
 
+        // Headers que manda Chrome al hacer el POST del login. PLACSP los
+        // valida (aunque no de forma estricta): sin ellos, rechaza el login
+        // sin dar mensaje de error explicito.
         $resp = $client->post($action, [
             'form_params' => $fields,
-            'headers'     => ['Referer' => $homeUri],
+            'headers'     => [
+                'Referer'                   => $homeUri,
+                'Origin'                    => 'https://contrataciondelestado.es',
+                'Sec-Fetch-Site'            => 'same-origin',
+                'Sec-Fetch-Mode'            => 'navigate',
+                'Sec-Fetch-Dest'            => 'document',
+                'Sec-Fetch-User'            => '?1',
+                'Upgrade-Insecure-Requests' => '1',
+                'Cache-Control'             => 'max-age=0',
+            ],
+            'on_stats' => function (\GuzzleHttp\TransferStats $stats) use (&$finalUri) {
+                $finalUri = (string) $stats->getEffectiveUri();
+            },
         ]);
 
-        if ($resp->getStatusCode() >= 400) {
-            throw new \RuntimeException("PLACSP_WEB: login devolvio HTTP {$resp->getStatusCode()}");
+        $body = (string) $resp->getBody();
+
+        // Senales positivas de sesion iniciada.
+        $isLogged = ($finalUri && str_contains($finalUri, '/wps/myportal/'))
+            || str_contains($body, 'portalLogoutLink')
+            || stripos($body, 'finalizar sesi') !== false
+            || stripos($body, 'operador econ') !== false;
+
+        if ($isLogged) {
+            return; //
         }
 
-        // Heuristica: si el HTML de respuesta sigue teniendo un form con
-        // input type=password, el login no entro (credenciales malas o
-        // bloqueo por captcha).
-        $body = (string) $resp->getBody();
-        if ($this->locateLoginForm($body)) {
-            throw new \RuntimeException(
-                'PLACSP_WEB: el login no parece haber entrado. Credenciales incorrectas, ' .
-                'captcha, o cambio de maqueta. Revisa PLACSP_USER / PLACSP_PASSWORD en .env.'
-            );
-        }
+        // Fallo: guardamos el HTML para poder depurar.
+        $debugPath = storage_path('logs/placsp-login-' . date('Ymd-His') . '.html');
+        @file_put_contents($debugPath, $body);
+
+        throw new \RuntimeException(
+            'PLACSP_WEB: el login no parece haber entrado. ' .
+            "final_uri={$finalUri} http={$resp->getStatusCode()} size=" . strlen($body) . '. ' .
+            "HTML guardado en {$debugPath} para depurar."
+        );
     }
 
     /**
@@ -272,7 +305,13 @@ class PLACSPWebProvider implements TenderSourceProvider
                 $passField = $name;
                 continue;
             }
-            if ($type === 'submit' || $type === 'button' || $type === 'image') {
+            // WebSphere Portal espera que viaje el nombre del submit pulsado
+            // como parametro. No lo descartamos.
+            if ($type === 'submit') {
+                $fields[$name] = $value !== '' ? $value : 'Entrar';
+                continue;
+            }
+            if ($type === 'button' || $type === 'image') {
                 continue;
             }
             if (! $userField && ($type === 'text' || $type === 'email' || $type === '')
@@ -291,6 +330,17 @@ class PLACSPWebProvider implements TenderSourceProvider
                 $name = $input->getAttribute('name');
                 if ($name !== '') { $userField = $name; break; }
             }
+        }
+
+        // PLACSP usa <button type="submit"> (no <input type="submit">).
+        // Lo incluimos como campo del form: WebSphere Portal espera el
+        // nombre del boton pulsado para saber que accion ejecutar.
+        foreach ($xpath->query('.//button[@type="submit"]', $form) ?: [] as $btn) {
+            /** @var \DOMElement $btn */
+            $name = $btn->getAttribute('name');
+            if ($name === '') continue;
+            $fields[$name] = 'Entrar';
+            break; // solo el primer submit
         }
 
         if (! $userField || ! $passField) return null;

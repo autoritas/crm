@@ -1,0 +1,15 @@
+{
+  "name": "placsp-login",
+  "version": "1.0.0",
+  "description": "Headless Chromium que logea en PLACSP y escribe el cookie jar en storage/app/certs/placsp.cookie",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "refresh": "node refresh-cookie.js"
+  },
+  "dependencies": {
+    "playwright": "^1.50.0",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}
