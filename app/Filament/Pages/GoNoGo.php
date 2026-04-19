@@ -95,6 +95,16 @@ class GoNoGo extends Page
 
     private function formatOffer(Offer $offer): array
     {
+        // Cuenta ficheros reales en la tarea Kanboard — si hay 0, la IA no
+        // puede analizar y conviene sugerir "Solicitar pliegos" al usuario.
+        $filesCount = 0;
+        if ($offer->kanboard_task) {
+            $filesCount = (int) DB::connection('kanboard')
+                ->table('task_has_files')
+                ->where('task_id', (int) $offer->kanboard_task)
+                ->count();
+        }
+
         return [
             'id' => $offer->id,
             'cliente' => $offer->cliente,
@@ -106,7 +116,65 @@ class GoNoGo extends Page
             'ia_go_nogo' => $offer->ia_go_nogo,
             'ia_analysis' => $offer->ia_go_nogo_analysis,
             'ia_date' => $offer->ia_go_nogo_date,
+            'kanboard_task' => $offer->kanboard_task,
+            'files_count' => $filesCount,
+            'supports_sync' => $this->providerSupports($offer->url),
         ];
+    }
+
+    /**
+     * True si alguno de nuestros providers puede procesar esta URL
+     * (PLACSP, PSCP, ...). Evita mostrar "Solicitar pliegos" cuando no
+     * tenemos scraper para el portal (ahorra clicks fallidos).
+     */
+    private function providerSupports(?string $url): bool
+    {
+        if (! $url) return false;
+        $detector = app(\App\Integrations\TenderSources\SourceDetector::class);
+        return $detector->detect($url) !== null;
+    }
+
+    /**
+     * Dispara la descarga de pliegos de la plataforma y los adjunta a la
+     * tarea Kanboard. Reusa SyncOfferDocumentsAction (mismo flujo que el
+     * scheduler + el hook de Cribado + el comando artisan).
+     */
+    public function syncDocuments(int $offerId): void
+    {
+        $offer = Offer::find($offerId);
+        if (! $offer) {
+            Notification::make()->title('Oferta no encontrada')->danger()->send();
+            return;
+        }
+
+        try {
+            $summary = app(\App\Actions\SyncOfferDocumentsAction::class)->run($offer);
+        } catch (\Throwable $e) {
+            Notification::make()
+                ->title('Error al solicitar pliegos')
+                ->body($e->getMessage())
+                ->danger()->persistent()->send();
+            return;
+        }
+
+        if (! empty($summary['errors']) && $summary['attached'] === 0) {
+            Notification::make()
+                ->title('No se pudieron adjuntar pliegos')
+                ->body(implode("\n", $summary['errors']))
+                ->danger()->persistent()->send();
+            return;
+        }
+
+        $title = sprintf(
+            'Pliegos: %d adjuntados · %d ya estaban · %d fallidos',
+            $summary['attached'],
+            $summary['skipped_duplicate'],
+            $summary['failed']
+        );
+        Notification::make()
+            ->title($title)
+            ->body($summary['provider'] ? "Fuente: {$summary['provider']}" : null)
+            ->success()->send();
     }
 
     public function decideGo(int $offerId): void

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Integrations\TenderSources\Providers\PLACSP\PLACSPProvider;
+use App\Integrations\TenderSources\Providers\PLACSP\PLACSPWebProvider;
 use App\Integrations\TenderSources\Providers\PSCP\PSCPCatalunyaProvider;
 use App\Integrations\TenderSources\SourceDetector;
 use Illuminate\Support\ServiceProvider;
@@ -20,6 +21,10 @@ class AppServiceProvider extends ServiceProvider
         // responde supports().
         $this->app->singleton(SourceDetector::class, function () {
             return new SourceDetector([
+                // Orden intencional: el web-provider tiene prioridad porque
+                // solo responde `supports()` si hay PLACSP_USER/PASSWORD en
+                // .env. Si no, cae al provider de mTLS con el cert .p12.
+                new PLACSPWebProvider(),
                 new PLACSPProvider(),
                 new PSCPCatalunyaProvider(),
             ]);

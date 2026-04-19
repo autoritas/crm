@@ -45,12 +45,18 @@ return [
         'app_id' => (int) env('STOCKFLOW_APP_ID', 10),
     ],
 
-    // Certificado digital para PLACSP / plataformas agregadas.
-    // El fichero .p12 debe estar fuera de /public/ (usar storage/app/certs/).
-    // La password se lee de .env y NUNCA se committea.
+    // PLACSP — dos caminos de acceso, el primero que tenga configuracion
+    // activa se usa. El provider web (user/password) es el camino rapido;
+    // el de mTLS (cert .p12) es el oficial, pendiente de alta admin.
     'placsp' => [
+        // Acceso via cert digital (sindicacion oficial). Requiere alta admin.
         'cert_path'     => env('PLACSP_CERT_PATH', storage_path('app/certs/placsp.p12')),
         'cert_password' => env('PLACSP_CERT_PASSWORD'),
+
+        // Acceso via portal web con user/password (alternativa hasta tener
+        // el cert autorizado). NUNCA committear estas credenciales.
+        'user'     => env('PLACSP_USER'),
+        'password' => env('PLACSP_PASSWORD'),
     ],
 
 ];

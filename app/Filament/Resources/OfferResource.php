@@ -339,35 +339,8 @@ class OfferResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('sync_documents')
-                    ->label('Pliegos → Kanboard')
-                    ->icon('heroicon-o-paper-clip')
-                    ->color('info')
-                    ->visible(fn (\App\Models\Offer $record) => $record->url && $record->kanboard_task)
-                    ->requiresConfirmation()
-                    ->modalHeading('Descargar pliegos y adjuntar a Kanboard')
-                    ->modalDescription(fn (\App\Models\Offer $record) =>
-                        "Se leerá la plataforma de contratación (" . (parse_url($record->url, PHP_URL_HOST) ?: 'URL') . ") y se adjuntaran los pliegos a la tarea Kanboard #{$record->kanboard_task}. Los ya adjuntados no se duplican."
-                    )
-                    ->modalSubmitActionLabel('Sincronizar')
-                    ->action(function (\App\Models\Offer $record) {
-                        $action = app(\App\Actions\SyncOfferDocumentsAction::class);
-                        $summary = $action->run($record);
-
-                        if (! empty($summary['errors']) && $summary['attached'] === 0) {
-                            \Filament\Notifications\Notification::make()
-                                ->title('No se pudieron adjuntar pliegos')
-                                ->body(implode("\n", $summary['errors']))
-                                ->danger()->persistent()->send();
-                            return;
-                        }
-
-                        $msg = "Pliegos: {$summary['attached']} adjuntados, {$summary['skipped_duplicate']} ya estaban, {$summary['failed']} fallidos";
-                        \Filament\Notifications\Notification::make()
-                            ->title($msg)
-                            ->body($summary['provider'] ? "Fuente: {$summary['provider']}" : null)
-                            ->success()->send();
-                    }),
+                // La accion "Solicitar pliegos" vive ahora en la pagina Go/No Go,
+                // que es donde el usuario se da cuenta de que los necesita.
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

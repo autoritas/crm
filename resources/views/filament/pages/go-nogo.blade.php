@@ -108,17 +108,24 @@
                                                 @if($offer['ia_date'])
                                                     · {{ \Carbon\Carbon::parse($offer['ia_date'])->format('d/m/Y H:i') }}
                                                 @endif
+                                                · {{ $offer['files_count'] }} pliego(s) en Kanboard
                                             </p>
                                             <p style="font-size: 12px; color: #475569; margin: 0; line-height: 1.6; white-space: pre-line;">{{ $offer['ia_analysis'] }}</p>
                                         </div>
                                     @else
-                                        <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
-                                            <p style="font-size: 11px; color: #b45309; margin: 0;">⏳ Pendiente de analisis IA. Se analizara cuando haya pliegos adjuntos en Kanboard.</p>
+                                        <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                                            <div style="font-size: 11px; color: #b45309;">
+                                                @if($offer['files_count'] === 0)
+                                                    ⏳ Pendiente de analisis IA — <strong>no hay pliegos en Kanboard</strong>. Solicitalos con el boton →
+                                                @else
+                                                    ⏳ Pendiente de analisis IA — {{ $offer['files_count'] }} pliego(s) adjuntados, esperando al proximo ciclo.
+                                                @endif
+                                            </div>
                                         </div>
                                     @endif
 
-                                    {{-- Botones de decision individual --}}
-                                    <div style="display: flex; gap: 10px; border-top: 1px solid #f3f4f6; padding-top: 12px;">
+                                    {{-- Botones: decision + solicitar pliegos --}}
+                                    <div style="display: flex; gap: 10px; border-top: 1px solid #f3f4f6; padding-top: 12px; align-items: center;">
                                         <button wire:click="decideGo({{ $offer['id'] }})" wire:loading.attr="disabled"
                                             style="padding: 8px 20px; font-size: 13px; font-weight: 700; border-radius: 8px; background: #22c55e; color: white; border: none; cursor: pointer;">
                                             🟢 GO
@@ -132,6 +139,25 @@
                                             style="padding: 8px 20px; font-size: 13px; font-weight: 700; border-radius: 8px; background: #ef4444; color: white; border: none; cursor: pointer;">
                                             🔴 NO GO
                                         </button>
+
+                                        @if($offer['supports_sync'])
+                                            <button wire:click="syncDocuments({{ $offer['id'] }})" wire:loading.attr="disabled"
+                                                wire:target="syncDocuments({{ $offer['id'] }})"
+                                                style="margin-left: auto; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 12px; font-weight: 600; border-radius: 8px;
+                                                       background: {{ $offer['files_count'] === 0 ? '#0ea5e9' : '#f1f5f9' }};
+                                                       color: {{ $offer['files_count'] === 0 ? 'white' : '#0369a1' }};
+                                                       border: 1px solid {{ $offer['files_count'] === 0 ? '#0ea5e9' : '#bae6fd' }};
+                                                       cursor: pointer;"
+                                                title="Descarga los pliegos desde la plataforma de contratacion y los adjunta a Kanboard">
+                                                <svg xmlns="http://www.w3.org/2000/svg" style="width: 14px; height: 14px;" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+                                                <span wire:loading.remove wire:target="syncDocuments({{ $offer['id'] }})">
+                                                    {{ $offer['files_count'] === 0 ? 'Solicitar pliegos' : 'Actualizar pliegos' }}
+                                                </span>
+                                                <span wire:loading wire:target="syncDocuments({{ $offer['id'] }})">
+                                                    Descargando...
+                                                </span>
+                                            </button>
+                                        @endif
                                     </div>
                                 </div>
                             @endforeach

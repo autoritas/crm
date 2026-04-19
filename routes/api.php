@@ -54,15 +54,24 @@ Route::middleware('api.key')->prefix('flow')->group(function () {
             return response()->json(['data' => [], 'prompt' => $prompt]);
         }
 
-        // 2. Usamos tu SQL optimizado para obtener solo las ofertas que CUMPLEN todo
-        // Nota: Usamos JOIN para asegurar que solo traiga ofertas con tareas activas y con archivos
+        // 2. Resolvemos el id_workflow PROSPECTS de ESTA empresa (no hardcodeado).
+        //    Antes estaba fijo a 2, que solo funcionaba para company 1.
+        $prospectsWorkflowId = \App\Models\OfferWorkflow::where('company_id', $companyId)
+            ->where('name', 'PROSPECTS')
+            ->value('id');
+
+        if (!$prospectsWorkflowId) {
+            return response()->json(['data' => [], 'prompt' => $prompt]);
+        }
+
+        // 3. SQL optimizado: solo ofertas con tareas activas y al menos un fichero.
         $offersData = \Illuminate\Support\Facades\DB::select("
-            SELECT 
-                o.id, 
-                o.kanboard_task, 
-                o.cliente, 
-                o.objeto, 
-                o.importe_licitacion, 
+            SELECT
+                o.id,
+                o.kanboard_task,
+                o.cliente,
+                o.objeto,
+                o.importe_licitacion,
                 o.url
             FROM offers o
             INNER JOIN kanboard.tasks kt ON kt.id = o.kanboard_task
@@ -70,12 +79,12 @@ Route::middleware('api.key')->prefix('flow')->group(function () {
             WHERE o.company_id = ?
             AND o.go_nogo = 'PENDIENTE'
             AND o.ia_go_nogo IS NULL
-            AND o.id_workflow = 2
+            AND o.id_workflow = ?
             AND kt.column_id = ?
             AND kt.is_active = 1
             GROUP BY o.id
             LIMIT 20
-        ", [$companyId, $prospectsColId]);
+        ", [$companyId, $prospectsWorkflowId, $prospectsColId]);
 
         if (empty($offersData)) {
             return response()->json(['data' => [], 'prompt' => $prompt]);
