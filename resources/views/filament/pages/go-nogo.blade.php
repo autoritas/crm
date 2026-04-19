@@ -140,6 +140,18 @@
                                             🔴 NO GO
                                         </button>
 
+                                        {{-- Subir pliego manual: siempre disponible (no depende del provider) --}}
+                                        <button wire:click="mountAction('uploadPliego', @js(['offer_id' => $offer['id']]))"
+                                            style="{{ $offer['supports_sync'] ? '' : 'margin-left: auto;' }}
+                                                   display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px;
+                                                   font-size: 12px; font-weight: 600; border-radius: 8px;
+                                                   background: #f1f5f9; color: #334155;
+                                                   border: 1px solid #cbd5e1; cursor: pointer;"
+                                            title="Sube pliegos desde tu disco a la tarea Kanboard">
+                                            <svg xmlns="http://www.w3.org/2000/svg" style="width: 14px; height: 14px;" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 7.5M12 7.5 7.5 12M12 7.5V21"/></svg>
+                                            Añadir pliegos
+                                        </button>
+
                                         @if($offer['supports_sync'])
                                             <button wire:click="syncDocuments({{ $offer['id'] }})" wire:loading.attr="disabled"
                                                 wire:target="syncDocuments({{ $offer['id'] }})"
@@ -167,4 +179,7 @@
             @endforeach
         </div>
     @endif
+
+    {{-- Renderiza los modales de Action de Filament (uploadPliego) --}}
+    <x-filament-actions::modals />
 </x-filament-panels::page>

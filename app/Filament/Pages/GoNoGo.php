@@ -2,18 +2,30 @@
 
 namespace App\Filament\Pages;
 
+use App\Integrations\TenderSources\DownloadedDocument;
 use App\Models\Company;
 use App\Models\Offer;
+use App\Models\OfferDocument;
 use App\Models\OfferStatus;
 use App\Models\OfferWorkflow;
+use App\Services\KanboardAttachmentService;
+use Filament\Actions\Action;
+use Filament\Actions\Concerns\InteractsWithActions;
+use Filament\Actions\Contracts\HasActions;
+use Filament\Forms;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class GoNoGo extends Page
+class GoNoGo extends Page implements HasActions, HasForms
 {
+    use InteractsWithActions;
+    use InteractsWithForms;
+
     protected static ?string $navigationGroup = 'Ofertas';
     protected static ?string $navigationIcon = 'heroicon-o-shield-check';
     protected static ?string $navigationLabel = 'Go / No Go';
@@ -404,5 +416,149 @@ class GoNoGo extends Page
         } catch (\Exception $e) {
             Log::error('Kanboard closeTask failed: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Accion Filament para subir pliegos manualmente desde el disco del usuario.
+     * Se adjuntan a la tarea Kanboard de la oferta (Kanboard se encarga del S3)
+     * y se registran en `offer_documents` con provider='MANUAL' para dedup.
+     *
+     * Uso desde blade:
+     *   wire:click="mountAction('uploadPliego', @js(['offer_id' => $offer['id']]))"
+     */
+    public function uploadPliegoAction(): Action
+    {
+        return Action::make('uploadPliego')
+            ->label('Subir pliego')
+            ->icon('heroicon-o-arrow-up-tray')
+            ->modalHeading(function (array $arguments) {
+                $offer = Offer::find($arguments['offer_id'] ?? 0);
+                return 'Subir pliegos: ' . ($offer?->cliente ?? 'oferta');
+            })
+            ->modalDescription('Los ficheros se adjuntan a la tarea Kanboard de esta oferta. Se admiten varios a la vez (max. 50 MB cada uno).')
+            ->form([
+                Forms\Components\FileUpload::make('files')
+                    ->label('Ficheros')
+                    ->multiple()
+                    ->required()
+                    ->maxSize(50 * 1024) // KB
+                    ->acceptedFileTypes([
+                        'application/pdf',
+                        'application/zip',
+                        'application/msword',
+                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        'application/vnd.ms-excel',
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        'text/plain',
+                    ])
+                    ->storeFiles(false)
+                    ->preserveFilenames(),
+            ])
+            ->modalSubmitActionLabel('Subir a Kanboard')
+            ->action(function (array $data, array $arguments): void {
+                $offerId = (int) ($arguments['offer_id'] ?? 0);
+                $offer   = Offer::find($offerId);
+
+                if (! $offer || ! $offer->kanboard_task) {
+                    Notification::make()
+                        ->title('La oferta no tiene tarea Kanboard asociada')
+                        ->danger()->send();
+                    return;
+                }
+
+                $projectId = (int) DB::connection('mysql')->table('company_settings')
+                    ->where('company_id', $offer->company_id)
+                    ->value('kanboard_project_id');
+
+                if (! $projectId) {
+                    Notification::make()
+                        ->title('La empresa no tiene kanboard_project_id configurado')
+                        ->danger()->send();
+                    return;
+                }
+
+                $kanboard = app(KanboardAttachmentService::class);
+                $uploaded = 0;
+                $dedup    = 0;
+                $failed   = 0;
+                $errors   = [];
+
+                foreach ($data['files'] as $file) {
+                    /** @var \Illuminate\Http\UploadedFile $file */
+                    $bytes    = @file_get_contents($file->getRealPath());
+                    if ($bytes === false) {
+                        $failed++;
+                        $errors[] = "No pude leer {$file->getClientOriginalName()}";
+                        continue;
+                    }
+
+                    $doc = new DownloadedDocument(
+                        sourceUrl: 'manual://' . $file->getClientOriginalName(),
+                        filename:  $file->getClientOriginalName(),
+                        content:   $bytes,
+                        mime:      $file->getMimeType(),
+                    );
+
+                    // Dedup: mismo sha256 ya adjuntado para esta oferta.
+                    $existing = OfferDocument::where('offer_id', $offer->id)
+                        ->where('sha256', $doc->sha256())
+                        ->where('status', 'attached')
+                        ->first();
+                    if ($existing) {
+                        $dedup++;
+                        continue;
+                    }
+
+                    $fileId = $kanboard->attach($projectId, (int) $offer->kanboard_task, $doc);
+
+                    if ($fileId === null) {
+                        $failed++;
+                        $errors[] = "Kanboard rechazo {$doc->filename}";
+                        OfferDocument::updateOrCreate(
+                            ['offer_id' => $offer->id, 'sha256' => $doc->sha256()],
+                            [
+                                'company_id'       => $offer->company_id,
+                                'provider'         => 'MANUAL',
+                                'source_url'       => $doc->sourceUrl,
+                                'filename'         => $doc->filename,
+                                'mime'             => $doc->mime,
+                                'bytes'            => $doc->bytes(),
+                                'kanboard_task_id' => (int) $offer->kanboard_task,
+                                'kanboard_file_id' => null,
+                                'status'           => 'failed',
+                                'error'            => 'Kanboard createTaskFile devolvio null',
+                            ],
+                        );
+                        continue;
+                    }
+
+                    OfferDocument::updateOrCreate(
+                        ['offer_id' => $offer->id, 'sha256' => $doc->sha256()],
+                        [
+                            'company_id'       => $offer->company_id,
+                            'provider'         => 'MANUAL',
+                            'source_url'       => $doc->sourceUrl,
+                            'filename'         => $doc->filename,
+                            'mime'             => $doc->mime,
+                            'bytes'            => $doc->bytes(),
+                            'kanboard_task_id' => (int) $offer->kanboard_task,
+                            'kanboard_file_id' => $fileId,
+                            'status'           => 'attached',
+                            'error'            => null,
+                        ],
+                    );
+                    $uploaded++;
+                }
+
+                $title = "Pliegos: {$uploaded} subidos, {$dedup} ya estaban, {$failed} fallidos";
+                if ($failed === 0) {
+                    Notification::make()->title($title)->success()->send();
+                } else {
+                    Notification::make()
+                        ->title($title)
+                        ->body(implode("\n", array_slice($errors, 0, 5)))
+                        ->warning()->persistent()->send();
+                }
+            });
     }
 }

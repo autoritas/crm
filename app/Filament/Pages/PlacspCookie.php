@@ -31,6 +31,15 @@ class PlacspCookie extends Page implements HasForms
     protected static ?int $navigationSort = 30;
     protected static string $view = 'filament.pages.placsp-cookie';
 
+    /**
+     * No aparece en el menu lateral. Se accede desde la pantalla
+     * Admin → Herramientas mediante una card.
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     public ?array $data = [];
 
     public function mount(): void
