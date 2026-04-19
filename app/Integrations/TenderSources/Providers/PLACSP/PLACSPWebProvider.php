@@ -324,8 +324,17 @@ class PLACSPWebProvider implements TenderSourceProvider
     }
 
     /**
-     * Extrae URLs a PDFs/ZIPs/DOCs del HTML del detalle.
-     * Incluye regex como fallback porque algunos enlaces estan en bloques JS.
+     * Extrae URLs a PDFs del HTML del detalle.
+     *
+     * En PLACSP los documentos estan en la tabla `myTablaDetalleVISUOE`, con 3
+     * enlaces por fila (HTML/XML/PDF), del tipo:
+     *   https://contrataciondelestado.es/FileSystem/servlet/GetDocumentByIdServlet?cifrado=X&DocumentIdParam=Y
+     *
+     * Nos quedamos solo con los que son PDF (detectados por el <img alt="Documento pdf">
+     * dentro del <a>) y descartamos los iconos HTML/XML (son alternativas del mismo doc)
+     * y los "sellos de tiempo" (que son JSF y solo valen para verificar firma).
+     *
+     * Tambien evitamos la tabla `myTablaDetalleVISUOE_Anulados` (documentos retirados).
      *
      * @return string[]
      */
@@ -333,30 +342,50 @@ class PLACSPWebProvider implements TenderSourceProvider
     {
         $urls = [];
 
-        // 1) Enlaces <a href=...> a extensiones de documento.
         libxml_use_internal_errors(true);
         $dom = new \DOMDocument();
         $dom->loadHTML('<?xml encoding="utf-8" ?>' . $html);
         libxml_clear_errors();
 
         $xpath = new \DOMXPath($dom);
-        $query = '//a[
-            contains(@href, ".pdf") or contains(@href, ".PDF") or
-            contains(@href, ".zip") or contains(@href, ".ZIP") or
-            contains(@href, ".doc") or contains(@href, ".docx") or
-            contains(@href, "/wps/wcm/connect/")
-        ]';
-        foreach ($xpath->query($query) ?: [] as $node) {
+
+        // Caso PLACSP tipico: enlaces con icono PDF dentro de la tabla activa.
+        $placspQuery = '//table[@id="myTablaDetalleVISUOE"]//a[.//img[@alt="Documento pdf"]]';
+        foreach ($xpath->query($placspQuery) ?: [] as $node) {
             /** @var \DOMElement $node */
             $href = trim($node->getAttribute('href'));
             if ($href === '') continue;
+            $urls[$this->absolutize($href, $baseUrl)] = true;
+        }
+
+        // Fallback generico: cualquier <a> directo a .pdf/zip/doc o GetDocumentByIdServlet.
+        $genericQuery = '//a[
+            contains(@href, ".pdf") or contains(@href, ".PDF") or
+            contains(@href, ".zip") or contains(@href, ".ZIP") or
+            contains(@href, ".doc") or contains(@href, ".docx") or
+            contains(@href, "/wps/wcm/connect/") or
+            contains(@href, "GetDocumentByIdServlet")
+        ]';
+        foreach ($xpath->query($genericQuery) ?: [] as $node) {
+            /** @var \DOMElement $node */
+            $href = trim($node->getAttribute('href'));
+            if ($href === '') continue;
+            // Si el enlace tiene un <img> cuyo alt NO es PDF, lo ignoramos (es HTML/XML).
+            foreach ($node->getElementsByTagName('img') as $img) {
+                $alt = $img->getAttribute('alt');
+                if ($alt !== '' && stripos($alt, 'pdf') === false
+                    && (stripos($alt, 'html') !== false || stripos($alt, 'xml') !== false
+                        || stripos($alt, 'sello') !== false)) {
+                    continue 2;
+                }
+            }
             $abs = $this->absolutize($href, $baseUrl);
             if ($this->looksLikeDocumentUrl($abs)) {
                 $urls[$abs] = true;
             }
         }
 
-        // 2) Regex global: PDFs/zips embebidos en scripts u onclick.
+        // Regex global para PDFs embebidos en JS (no tipico en PLACSP pero por higiene).
         preg_match_all(
             '#https?://[^\s"\'<>]+?\.(?:pdf|zip|docx?|xlsx?|rtf)(?:\?[^\s"\'<>]*)?#i',
             $html,
@@ -372,11 +401,9 @@ class PLACSPWebProvider implements TenderSourceProvider
     private function looksLikeDocumentUrl(string $url): bool
     {
         if (! preg_match('#^https?://#i', $url)) return false;
-        if (! preg_match('#\.(pdf|zip|docx?|xlsx?|rtf)(\?|$)#i', $url)
-            && ! str_contains($url, '/wps/wcm/connect/')) {
-            return false;
-        }
-        return true;
+        return preg_match('#\.(pdf|zip|docx?|xlsx?|rtf)(\?|$)#i', $url)
+            || str_contains($url, '/wps/wcm/connect/')
+            || str_contains($url, 'GetDocumentByIdServlet');
     }
 
     private function absolutize(string $href, string $baseUrl): string
@@ -424,11 +451,23 @@ class PLACSPWebProvider implements TenderSourceProvider
 
     private function deriveFilename(string $url, string $cd): string
     {
+        // 1) Content-Disposition es lo mas fiable (PLACSP lo manda bien).
         if ($cd !== '' && preg_match('/filename\*?=(?:UTF-8\'\')?"?([^";]+)"?/i', $cd, $m)) {
             return $this->sanitizeFilename(rawurldecode(trim($m[1])));
         }
+
+        // 2) Si la URL es el servlet de PLACSP, basename es "GetDocumentByIdServlet"
+        //    y no sirve. Generamos un nombre basado en hash del DocumentIdParam.
+        if (str_contains($url, 'GetDocumentByIdServlet')) {
+            parse_str(parse_url($url, PHP_URL_QUERY) ?: '', $q);
+            $seed = $q['DocumentIdParam'] ?? $url;
+            return 'pliego_' . substr(md5($seed), 0, 8) . '.pdf';
+        }
+
+        // 3) Ultima vía: basename de la URL. Si no trae extension, asumimos PDF.
         $base = basename(parse_url($url, PHP_URL_PATH) ?: '');
         if ($base === '') return 'pliego_' . substr(md5($url), 0, 8) . '.pdf';
+        if (! preg_match('/\.[a-z0-9]{2,5}$/i', $base)) $base .= '.pdf';
         return $this->sanitizeFilename($base);
     }
 
